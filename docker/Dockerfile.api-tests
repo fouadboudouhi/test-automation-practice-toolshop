@@ -1,5 +1,11 @@
 FROM python:3.12-slim
+
 WORKDIR /tests
-COPY tests /tests
-RUN pip install pytest requests
-CMD ["pytest", "tests/api"]
+COPY tests /tests/tests
+
+RUN pip install --no-cache-dir \
+    pytest==8.3.2 \
+    requests==2.32.3 \
+    psycopg[binary]==3.2.1
+
+CMD ["pytest", "-q", "tests/api"]
