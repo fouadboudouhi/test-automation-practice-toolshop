@@ -1,6 +1,8 @@
 import os
 import pytest
 import psycopg
+import allure
+import pytest
 
 from utils.wait import wait_for_http
 
@@ -31,3 +33,16 @@ def _truncate_users():
 def clean_db():
     _truncate_users()
     yield
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    rep = outcome.get_result()
+
+    if rep.when == "call" and rep.failed and "page" in item.fixturenames:
+        page = item.funcargs["page"]
+        allure.attach(
+            page.screenshot(),
+            name="screenshot",
+            attachment_type=allure.attachment_type.PNG,
+        )

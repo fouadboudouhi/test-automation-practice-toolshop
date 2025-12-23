@@ -3,10 +3,13 @@ FROM mcr.microsoft.com/playwright/python:v1.43.0
 WORKDIR /tests
 COPY tests /tests/tests
 
+COPY pytest.ini /tests/pytest.ini
+
 RUN pip install --no-cache-dir \
     pytest==8.3.2 \
     playwright==1.43.0 \
     requests==2.32.3 \
-    psycopg[binary]==3.2.1
+    psycopg[binary]==3.2.1 \
+    allure-pytest==2.13.5
 
 CMD ["pytest", "-q", "-m", "ui", "tests/ui"]

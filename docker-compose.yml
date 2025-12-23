@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:16-alpine
@@ -38,9 +36,8 @@ services:
       DB_NAME: appdb
       DB_USER: app
       DB_PASSWORD: app
-    depends_on:
-      app:
-        condition: service_started
+    volumes:
+      - ./allure-results:/allure-results
 
   ui-tests:
     build:
@@ -48,11 +45,5 @@ services:
       dockerfile: docker/Dockerfile.ui-tests
     environment:
       APP_BASE_URL: http://app:8000
-      DB_HOST: db
-      DB_PORT: "5432"
-      DB_NAME: appdb
-      DB_USER: app
-      DB_PASSWORD: app
-    depends_on:
-      app:
-        condition: service_started
+    volumes:
+      - ./allure-results:/allure-results

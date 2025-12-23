@@ -4,38 +4,16 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7ae2f2ca-10e7-4f2f-9794-670ee37a8f0b" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/test-automation-user-management.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/crud.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/deps.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/routes.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/schemas.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/db/config.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/db/init_db.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/db/session.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/web/routes.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/web/templates/index.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pytest.ini" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tests/ui/conftest.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tests/utils/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tests/utils/wait.py" afterDir="false" />
+    <list default="true" id="7ae2f2ca-10e7-4f2f-9794-670ee37a8f0b" name="Changes" comment="feat: turn project skeleton into fully testable user management system&#10;&#10;- implement full user CRUD API using FastAPI&#10;- add PostgreSQL persistence with SQLAlchemy ORM&#10;- enforce data integrity via unique email constraint&#10;- introduce deterministic API tests with database reset per test&#10;- add health endpoint and explicit readiness waiting for stable test execution&#10;- provide minimal web UI only for critical UI test coverage&#10;- dockerize app, tests and database for identical local and CI execution&#10;- fix missing runtime dependency required for EmailStr validation">
+      <change afterPath="$PROJECT_DIR$/.github/workflows/ci.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/models/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models/user.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docker/Dockerfile.api-tests" beforeDir="false" afterPath="$PROJECT_DIR$/docker/Dockerfile.api-tests" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docker/Dockerfile.app" beforeDir="false" afterPath="$PROJECT_DIR$/docker/Dockerfile.app" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docker/Dockerfile.ui-tests" beforeDir="false" afterPath="$PROJECT_DIR$/docker/Dockerfile.ui-tests" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/api/test_users_api.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/api/test_users_api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pytest.ini" beforeDir="false" afterPath="$PROJECT_DIR$/pytest.ini" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/conftest.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/conftest.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/ui/conftest.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/ui/conftest.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/ui/test_users_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/ui/test_users_ui.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -53,6 +31,9 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {}
+}]]></component>
   <component name="GithubPullRequestsUISettings"><![CDATA[{
   "selectedUrlAndAccountId": {
     "url": "https://github.com/fouadboudouhi/test-automation-user-management.git",
@@ -100,9 +81,22 @@
       <workItem from="1765986103883" duration="3569000" />
       <workItem from="1766495684580" duration="8000" />
     </task>
+    <task id="LOCAL-00001" summary="feat: turn project skeleton into fully testable user management system&#10;&#10;- implement full user CRUD API using FastAPI&#10;- add PostgreSQL persistence with SQLAlchemy ORM&#10;- enforce data integrity via unique email constraint&#10;- introduce deterministic API tests with database reset per test&#10;- add health endpoint and explicit readiness waiting for stable test execution&#10;- provide minimal web UI only for critical UI test coverage&#10;- dockerize app, tests and database for identical local and CI execution&#10;- fix missing runtime dependency required for EmailStr validation">
+      <option name="closed" value="true" />
+      <created>1766499191027</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1766499191027</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="feat: turn project skeleton into fully testable user management system&#10;&#10;- implement full user CRUD API using FastAPI&#10;- add PostgreSQL persistence with SQLAlchemy ORM&#10;- enforce data integrity via unique email constraint&#10;- introduce deterministic API tests with database reset per test&#10;- add health endpoint and explicit readiness waiting for stable test execution&#10;- provide minimal web UI only for critical UI test coverage&#10;- dockerize app, tests and database for identical local and CI execution&#10;- fix missing runtime dependency required for EmailStr validation" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: turn project skeleton into fully testable user management system&#10;&#10;- implement full user CRUD API using FastAPI&#10;- add PostgreSQL persistence with SQLAlchemy ORM&#10;- enforce data integrity via unique email constraint&#10;- introduce deterministic API tests with database reset per test&#10;- add health endpoint and explicit readiness waiting for stable test execution&#10;- provide minimal web UI only for critical UI test coverage&#10;- dockerize app, tests and database for identical local and CI execution&#10;- fix missing runtime dependency required for EmailStr validation" />
   </component>
 </project>
