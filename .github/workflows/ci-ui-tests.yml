@@ -22,7 +22,6 @@ jobs:
       DEMO_PASSWORD: welcome01
 
       COMPOSE_FILE: docker/docker-compose.yml
-      COMPOSE_ENV_FILE: docker/.env
 
       API_DOC_URL: http://localhost:8091/api/documentation
       API_SERVICE: laravel-api
@@ -37,8 +36,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" up -d --pull missing
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" ps
+          docker compose -f "${COMPOSE_FILE}" up -d --pull missing
+          docker compose -f "${COMPOSE_FILE}" ps
 
       - name: Wait for API
         shell: bash
@@ -53,7 +52,7 @@ jobs:
             sleep 2
           done
           echo "API did not become reachable in time."
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
           exit 1
 
       - name: Wait for DB to accept connections
@@ -62,7 +61,7 @@ jobs:
           set -euo pipefail
           echo "Waiting for DB (${DB_SERVICE}) ..."
           for i in {1..60}; do
-            if docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" exec -T "${DB_SERVICE}" \
+            if docker compose -f "${COMPOSE_FILE}" exec -T "${DB_SERVICE}" \
               sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
               echo "DB is ready."
               exit 0
@@ -70,7 +69,7 @@ jobs:
             sleep 2
           done
           echo "DB did not become ready in time."
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
           exit 1
 
       - name: Migrate + seed database
@@ -78,13 +77,13 @@ jobs:
         run: |
           set -euo pipefail
           echo "Running seed in ${API_SERVICE}: ${SEED_CMD}"
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" ${SEED_CMD}
+          docker compose -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" ${SEED_CMD}
 
       - name: Verify seed (products must exist)
         shell: bash
         run: |
           set -euo pipefail
-          OUT="$(docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" \
+          OUT="$(docker compose -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" \
             php artisan tinker --execute="echo \App\Models\Product::count();" || true)"
           COUNT="$(echo "${OUT}" | tr -dc '0-9' || true)"
           echo "Product count: ${COUNT}"
@@ -107,7 +106,7 @@ jobs:
             sleep 2
           done
           echo "UI did not become reachable in time."
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
           exit 1
 
       - name: Set up Python
@@ -143,13 +142,13 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
 
       - name: Stop docker stack
         if: always()
         shell: bash
         run: |
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" down -v
+          docker compose -f "${COMPOSE_FILE}" down -v
 
   regression:
     name: Regression (fails the workflow on bugs)
@@ -164,7 +163,6 @@ jobs:
       DEMO_PASSWORD: welcome01
 
       COMPOSE_FILE: docker/docker-compose.yml
-      COMPOSE_ENV_FILE: docker/.env
 
       API_DOC_URL: http://localhost:8091/api/documentation
       API_SERVICE: laravel-api
@@ -179,8 +177,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" up -d --pull missing
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" ps
+          docker compose -f "${COMPOSE_FILE}" up -d --pull missing
+          docker compose -f "${COMPOSE_FILE}" ps
 
       - name: Wait for API
         shell: bash
@@ -192,7 +190,7 @@ jobs:
             fi
             sleep 2
           done
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
           exit 1
 
       - name: Wait for DB to accept connections
@@ -200,20 +198,20 @@ jobs:
         run: |
           set -euo pipefail
           for i in {1..60}; do
-            if docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" exec -T "${DB_SERVICE}" \
+            if docker compose -f "${COMPOSE_FILE}" exec -T "${DB_SERVICE}" \
               sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
               exit 0
             fi
             sleep 2
           done
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
           exit 1
 
       - name: Migrate + seed database
         shell: bash
         run: |
           set -euo pipefail
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" ${SEED_CMD}
+          docker compose -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" ${SEED_CMD}
 
       - name: Wait for UI
         shell: bash
@@ -225,7 +223,7 @@ jobs:
             fi
             sleep 2
           done
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
           exit 1
 
       - name: Set up Python
@@ -261,10 +259,10 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
 
       - name: Stop docker stack
         if: always()
         shell: bash
         run: |
-          docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" down -v
+          docker compose -f "${COMPOSE_FILE}" down -v

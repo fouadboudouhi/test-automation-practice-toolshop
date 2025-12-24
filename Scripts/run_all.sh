@@ -11,7 +11,6 @@ BASE_URL="${BASE_URL:-http://localhost:4200}"
 API_DOC_URL="${API_DOC_URL:-http://localhost:8091/api/documentation}"
 
 COMPOSE_FILE="${COMPOSE_FILE:-docker/docker-compose.yml}"
-COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-docker/.env}"
 
 # Compose service names
 API_SERVICE="${API_SERVICE:-laravel-api}"
@@ -39,7 +38,6 @@ echo "==> Repo root:          ${REPO_ROOT}"
 echo "==> BASE_URL:           ${BASE_URL}"
 echo "==> API_DOC_URL:        ${API_DOC_URL}"
 echo "==> Compose file:       ${COMPOSE_FILE}"
-echo "==> Compose env file:   ${COMPOSE_ENV_FILE}"
 echo "==> API service:        ${API_SERVICE}"
 echo "==> DB service:         ${DB_SERVICE}"
 echo "==> Seed cmd:           ${SEED_CMD}"
@@ -50,7 +48,7 @@ echo "==> Cleanup at end:     ${CLEANUP}"
 echo
 
 dc() {
-  docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}" "$@"
+  docker compose -f "${COMPOSE_FILE}" "$@"
 }
 
 wait_for_url() {
@@ -101,7 +99,6 @@ seed_with_retry() {
 
 verify_products_exist() {
   echo "==> Verifying seed: product count must be > 0 ..."
-  # tinker output can include warnings; extract digits only
   local out
   out="$(dc exec -T "${API_SERVICE}" php artisan tinker --execute="echo \App\Models\Product::count();" 2>/dev/null || true)"
   local count
@@ -156,28 +153,28 @@ echo "==> Starting docker stack ..."
 dc up -d --pull missing
 dc ps
 
-# --- wait for API (reverse proxy reachable) ---
+# --- wait for API ---
 if ! wait_for_url "${API_DOC_URL}" "API" 120 2; then
   echo "==> API not reachable. Debug logs:"
   print_debug_logs
   exit 1
 fi
 
-# --- wait for DB to accept connections ---
+# --- wait for DB ---
 if ! wait_for_db; then
   echo "==> DB not ready. Debug logs:"
   print_debug_logs
   exit 1
 fi
 
-# --- migrate+seed (with retry) ---
+# --- migrate+seed ---
 if ! seed_with_retry; then
   echo "==> Seed failed. Debug logs:"
   print_debug_logs
   exit 1
 fi
 
-# --- verify seeded data exists (prevents "silent green" with empty UI) ---
+# --- verify seeded data exists ---
 if ! verify_products_exist; then
   echo "==> Seed verification failed. Debug logs:"
   print_debug_logs

@@ -1,7 +1,6 @@
 SHELL := /bin/bash
 
 COMPOSE_FILE ?= docker/docker-compose.yml
-COMPOSE_ENV  ?= docker/.env
 
 API_SERVICE  ?= laravel-api
 DB_SERVICE   ?= mariadb
@@ -17,7 +16,7 @@ REG_TAG      ?= regression
 
 ARTIFACTS    ?= artifacts_local
 
-DC := docker compose --env-file $(COMPOSE_ENV) -f $(COMPOSE_FILE)
+DC := docker compose -f $(COMPOSE_FILE)
 
 .PHONY: help up down clean logs ps wait-api wait-db seed verify-seed rfbrowser-init smoke regression test-all
 

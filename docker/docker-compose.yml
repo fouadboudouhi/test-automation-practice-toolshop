@@ -10,7 +10,7 @@ services:
       MYSQL_DATABASE: toolshop
 
   laravel-api:
-    image: testsmith/practice-software-testing-${SPRINT}-api
+    image: testsmith/practice-software-testing-${SPRINT:-sprint5}-api
     depends_on:
       - mariadb
     environment:
@@ -18,13 +18,12 @@ services:
       DB_PORT: "3306"
       DB_HOST: mariadb
       host: localhost
-      DISABLE_LOGGING: "${DISABLE_LOGGING}"
-
+      DISABLE_LOGGING: "${DISABLE_LOGGING:-true}"
     volumes:
       - laravel-app-code:/var/www
 
   angular-ui:
-    image: testsmith/practice-software-testing-${SPRINT}-ui
+    image: testsmith/practice-software-testing-${SPRINT:-sprint5}-ui
     ports:
       - "4200:4200"
     command: bash -c "ng serve --host 0.0.0.0 --port 4200"
@@ -54,7 +53,7 @@ services:
       DB_PORT: "3306"
       DB_HOST: mariadb
       host: localhost
-      DISABLE_LOGGING: "${DISABLE_LOGGING}"
+      DISABLE_LOGGING: "${DISABLE_LOGGING:-true}"
 
 volumes:
   laravel-app-code:
