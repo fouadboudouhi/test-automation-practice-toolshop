@@ -1,18 +1,22 @@
 services:
   mariadb:
     image: yobasystems/alpine-mariadb:10.6.11
-    ports:
-      - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_USER: user
       MYSQL_PASSWORD: root
       MYSQL_DATABASE: toolshop
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -proot --silent || exit 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
 
   laravel-api:
     image: testsmith/practice-software-testing-${SPRINT:-sprint5}-api
     depends_on:
-      - mariadb
+      mariadb:
+        condition: service_healthy
     environment:
       PHP_OPCACHE_VALIDATE_TIMESTAMPS: "1"
       DB_PORT: "3306"
@@ -21,6 +25,12 @@ services:
       DISABLE_LOGGING: "${DISABLE_LOGGING:-true}"
     volumes:
       - laravel-app-code:/var/www
+    healthcheck:
+      # No host port needed; check internally.
+      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1/api/documentation\") ? 0 : 1);'"]
+      interval: 3s
+      timeout: 3s
+      retries: 80
 
   angular-ui:
     image: testsmith/practice-software-testing-${SPRINT:-sprint5}-ui
@@ -28,22 +38,30 @@ services:
       - "4200:4200"
     command: bash -c "ng serve --host 0.0.0.0 --port 4200"
     depends_on:
-      - web
+      laravel-api:
+        condition: service_healthy
 
+  # Optional local-only reverse proxy / docs (CI skips this completely)
   web:
+    profiles: ["local"]
     image: testsmith/practice-software-testing-web
     ports:
       - "8091:80"
       - "8000:81"
     depends_on:
-      - laravel-api
+      laravel-api:
+        condition: service_healthy
 
+  # Optional local-only cron (CI skips)
   cron:
+    profiles: ["local"]
     image: testsmith/practice-software-testing-cron
     restart: always
     depends_on:
-      - mariadb
-      - laravel-api
+      mariadb:
+        condition: service_healthy
+      laravel-api:
+        condition: service_healthy
     volumes:
       - laravel-app-code:/var/www
     working_dir: /var/www

@@ -1,4 +1,4 @@
-name: UI Tests (Docker + Robot)
+name: UI Tests (Docker Profiles + Robot)
 
 on:
   push:
@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  smoke:
-    name: Smoke (QGate)
+  ui-tests:
+    name: Smoke -> Regression (single stack)
     runs-on: ubuntu-latest
 
     env:
@@ -21,105 +21,66 @@ jobs:
       DEMO_EMAIL: customer@practicesoftwaretesting.com
       DEMO_PASSWORD: welcome01
 
+      # keep compose deterministic and avoid collisions
       COMPOSE_FILE: docker/docker-compose.yml
-      COMPOSE_OVERRIDE: /tmp/docker-compose.ci.override.yml
-
-      API_DOC_URL: http://localhost:8091/api/documentation
-      API_SERVICE: laravel-api
-      DB_SERVICE: mariadb
-      SEED_CMD: php artisan migrate:fresh --seed
+      COMPOSE_PROJECT_NAME: ui-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create CI compose override (fix ports + arm64-only services)
+      - name: Start docker stack (CI profile = default)
         shell: bash
         run: |
           set -euo pipefail
-          cat > "${COMPOSE_OVERRIDE}" <<'YAML'
-          services:
-            # Keep service name "web" to satisfy dependency graph,
-            # but REMOVE host port bindings to avoid 8091 conflicts.
-            web:
-              image: alpine:3.20
-              command: ["sh", "-c", "sleep infinity"]
-              ports: null
-              depends_on: []
+          docker compose -f "${COMPOSE_FILE}" up -d --pull missing
+          docker compose -f "${COMPOSE_FILE}" ps
 
-            # cron not needed for tests; replace with dummy too
-            cron:
-              image: alpine:3.20
-              command: ["sh", "-c", "sleep infinity"]
-              depends_on: []
-
-            # Expose API directly on 8091 for API_DOC_URL
-            laravel-api:
-              ports:
-                - "8091:80"
-
-            # In CI the UI depends on API directly (not on "web")
-            angular-ui:
-              depends_on:
-                - laravel-api
-          YAML
-
-          echo "Sanity check merged compose config..."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" config >/dev/null
-          echo "Compose config OK."
-
-      - name: Start docker stack (with CI override)
+      - name: Wait for API (container-internal)
         shell: bash
         run: |
           set -euo pipefail
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" up -d --pull missing
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" ps
-
-      - name: Wait for API
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Waiting for API on ${API_DOC_URL} ..."
+          echo "Waiting for API via laravel-api health endpoint..."
           for i in {1..120}; do
-            if curl -fsS "${API_DOC_URL}" >/dev/null 2>&1; then
-              echo "API is reachable."
+            if docker compose -f "${COMPOSE_FILE}" exec -T laravel-api \
+              php -r 'exit(@file_get_contents("http://127.0.0.1/api/documentation") ? 0 : 1);' >/dev/null 2>&1; then
+              echo "API reachable."
               exit 0
             fi
             sleep 2
           done
-          echo "API did not become reachable in time."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300 || true
+          echo "API not reachable in time."
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
           exit 1
 
-      - name: Wait for DB to accept connections
+      - name: Wait for DB
         shell: bash
         run: |
           set -euo pipefail
-          echo "Waiting for DB (${DB_SERVICE}) ..."
+          echo "Waiting for DB..."
           for i in {1..60}; do
-            if docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" exec -T "${DB_SERVICE}" \
+            if docker compose -f "${COMPOSE_FILE}" exec -T mariadb \
               sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
-              echo "DB is ready."
+              echo "DB ready."
               exit 0
             fi
             sleep 2
           done
-          echo "DB did not become ready in time."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300 || true
+          echo "DB not ready in time."
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
           exit 1
 
-      - name: Migrate + seed database
+      - name: Migrate + seed
         shell: bash
         run: |
           set -euo pipefail
-          echo "Running seed in ${API_SERVICE}: ${SEED_CMD}"
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" exec -T "${API_SERVICE}" ${SEED_CMD}
+          docker compose -f "${COMPOSE_FILE}" exec -T laravel-api php artisan migrate:fresh --seed
 
-      - name: Verify seed (products must exist)
+      - name: Verify seed (products > 0)
         shell: bash
         run: |
           set -euo pipefail
-          OUT="$(docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" exec -T "${API_SERVICE}" \
+          OUT="$(docker compose -f "${COMPOSE_FILE}" exec -T laravel-api \
             php artisan tinker --execute="echo \App\Models\Product::count();" || true)"
           COUNT="$(echo "${OUT}" | tr -dc '0-9' || true)"
           echo "Product count: ${COUNT}"
@@ -136,13 +97,13 @@ jobs:
           echo "Waiting for UI on ${BASE_URL} ..."
           for i in {1..120}; do
             if curl -fsS "${BASE_URL}" >/dev/null 2>&1; then
-              echo "UI is reachable."
+              echo "UI reachable."
               exit 0
             fi
             sleep 2
           done
-          echo "UI did not become reachable in time."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300 || true
+          echo "UI not reachable in time."
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
           exit 1
 
       - name: Set up Python
@@ -158,13 +119,19 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ hashFiles('requirements.txt') }}
 
       - name: Install deps + init Browser
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           rfbrowser init
 
       - name: Run Smoke (QGate)
+        id: smoke
+        continue-on-error: true
+        shell: bash
         run: |
+          set -euo pipefail
           robot --outputdir artifacts/smoke --include smoke ui-tests
 
       - name: Upload Smoke artifacts
@@ -174,167 +141,19 @@ jobs:
           name: robot-artifacts-smoke
           path: artifacts/smoke
 
-      - name: Docker logs (on failure)
-        if: failure()
+      - name: Fail fast if Smoke failed
+        if: steps.smoke.outcome != 'success'
         shell: bash
         run: |
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" ps || true
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 500 || true
-
-      - name: Stop docker stack
-        if: always()
-        shell: bash
-        run: |
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" down -v || true
-
-  regression:
-    name: Regression (fails workflow on bugs)
-    runs-on: ubuntu-latest
-    needs: smoke
-    if: needs.smoke.result == 'success'
-
-    env:
-      BASE_URL: http://localhost:4200
-      HEADLESS: "true"
-      DEMO_EMAIL: customer@practicesoftwaretesting.com
-      DEMO_PASSWORD: welcome01
-
-      COMPOSE_FILE: docker/docker-compose.yml
-      COMPOSE_OVERRIDE: /tmp/docker-compose.ci.override.yml
-
-      API_DOC_URL: http://localhost:8091/api/documentation
-      API_SERVICE: laravel-api
-      DB_SERVICE: mariadb
-      SEED_CMD: php artisan migrate:fresh --seed
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Create CI compose override (fix ports + arm64-only services)
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat > "${COMPOSE_OVERRIDE}" <<'YAML'
-          services:
-            web:
-              image: alpine:3.20
-              command: ["sh", "-c", "sleep infinity"]
-              ports: null
-              depends_on: []
-
-            cron:
-              image: alpine:3.20
-              command: ["sh", "-c", "sleep infinity"]
-              depends_on: []
-
-            laravel-api:
-              ports:
-                - "8091:80"
-
-            angular-ui:
-              depends_on:
-                - laravel-api
-          YAML
-
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" config >/dev/null
-
-      - name: Start docker stack (with CI override)
-        shell: bash
-        run: |
-          set -euo pipefail
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" up -d --pull missing
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" ps
-
-      - name: Wait for API
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Waiting for API on ${API_DOC_URL} ..."
-          for i in {1..120}; do
-            if curl -fsS "${API_DOC_URL}" >/dev/null 2>&1; then
-              echo "API is reachable."
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "API did not become reachable in time."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300 || true
+          echo "Smoke failed -> stopping pipeline (Regression will not run)."
           exit 1
-
-      - name: Wait for DB to accept connections
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Waiting for DB (${DB_SERVICE}) ..."
-          for i in {1..60}; do
-            if docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" exec -T "${DB_SERVICE}" \
-              sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
-              echo "DB is ready."
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "DB did not become ready in time."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300 || true
-          exit 1
-
-      - name: Migrate + seed database
-        shell: bash
-        run: |
-          set -euo pipefail
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" exec -T "${API_SERVICE}" ${SEED_CMD}
-
-      - name: Verify seed (products must exist)
-        shell: bash
-        run: |
-          set -euo pipefail
-          OUT="$(docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" exec -T "${API_SERVICE}" \
-            php artisan tinker --execute="echo \App\Models\Product::count();" || true)"
-          COUNT="$(echo "${OUT}" | tr -dc '0-9' || true)"
-          echo "Product count: ${COUNT}"
-          if [[ -z "${COUNT}" || "${COUNT}" -le 0 ]]; then
-            echo "Seed verification failed."
-            echo "${OUT}"
-            exit 1
-          fi
-
-      - name: Wait for UI
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Waiting for UI on ${BASE_URL} ..."
-          for i in {1..120}; do
-            if curl -fsS "${BASE_URL}" >/dev/null 2>&1; then
-              echo "UI is reachable."
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "UI did not become reachable in time."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300 || true
-          exit 1
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('requirements.txt') }}
-
-      - name: Install deps + init Browser
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          rfbrowser init
 
       - name: Run Regression (must pass)
+        id: regression
+        continue-on-error: true
+        shell: bash
         run: |
+          set -euo pipefail
           robot --outputdir artifacts/regression --include regression ui-tests
 
       - name: Upload Regression artifacts
@@ -344,15 +163,22 @@ jobs:
           name: robot-artifacts-regression
           path: artifacts/regression
 
+      - name: Fail if Regression failed
+        if: steps.regression.outcome != 'success'
+        shell: bash
+        run: |
+          echo "Regression failed -> workflow fails (real bug)."
+          exit 1
+
       - name: Docker logs (on failure)
         if: failure()
         shell: bash
         run: |
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" ps || true
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 500 || true
+          docker compose -f "${COMPOSE_FILE}" ps || true
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500 || true
 
       - name: Stop docker stack
         if: always()
         shell: bash
         run: |
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" down -v || true
+          docker compose -f "${COMPOSE_FILE}" down -v || true
