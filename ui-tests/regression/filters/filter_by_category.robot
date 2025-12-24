@@ -4,6 +4,7 @@ Resource          ../../resources/keywords/common.robot
 
 *** Test Cases ***
 Filter Products By Category
+    [Tags]    regression
     Open Toolshop
     Click    css=[data-test^="category-"] >> nth=0
     Wait Until Keyword Succeeds    10s    500ms    Filtered Results Should Exist

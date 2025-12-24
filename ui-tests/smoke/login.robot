@@ -6,11 +6,8 @@ Suite Teardown    Close Toolshop
 
 *** Test Cases ***
 Login Is Possible
-    [Documentation]
-    ...    Pass criteria:
-    ...    - Sign-in entry is clickable
-    ...    - Login form fields are visible
-    ...    - After submit, the email input disappears (detached)
+    [Documentation]    Pass criteria: login completes (URL not containing /login anymore).
+    [Tags]    smoke    login
     Wait For Elements State    css=[data-test="nav-sign-in"]    visible    timeout=20s
     Click    css=[data-test="nav-sign-in"]
 
@@ -21,5 +18,5 @@ Login Is Possible
     Fill Text    css=input#password    ${PASSWORD}
     Click        css=[data-test="login-submit"]
 
-    Wait For Elements State    css=input#email    detached    timeout=20s
-    Wait For Elements State    css=nav.navbar     visible     timeout=20s
+    # Robust: verify redirect away from /login instead of waiting for some element to detach
+    Wait For Login To Complete

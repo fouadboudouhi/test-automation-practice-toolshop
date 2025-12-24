@@ -5,6 +5,7 @@ Resource          ../../resources/keywords/common.robot
 
 *** Test Cases ***
 Add Product To Cart
+    [Tags]    regression
     Open Toolshop
     Wait Until Keyword Succeeds    15s    500ms    Product Cards Should Exist
     Click    css=a.card[data-test^="product-"] >> nth=0

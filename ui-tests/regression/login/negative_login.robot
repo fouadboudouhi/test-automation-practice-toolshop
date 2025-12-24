@@ -5,6 +5,7 @@ Resource          ../../resources/keywords/common.robot
 
 *** Test Cases ***
 Login With Invalid Credentials
+    [Tags]    regression
     Open Toolshop
 
     Click    css=[data-test="nav-sign-in"]
