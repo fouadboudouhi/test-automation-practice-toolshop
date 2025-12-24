@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.4.1 (Python 3.13.2 on darwin)" generated="2025-12-24T01:07:12.377269" rpa="false" schemaversion="5">
+<suite id="s1" name="Smoke" source="/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/ui-tests/smoke">
+<suite id="s1-s1" name="Cart" source="/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/ui-tests/smoke/cart.robot">
+<test id="s1-s1-t1" name="Add To Cart Works" line="5">
+<kw name="Open Toolshop" owner="common">
+<kw name="New Browser" owner="Browser">
+<msg time="2025-12-24T01:07:12.466202" level="INFO">{"browser": "chromium", "headless": true, "chromiumSandbox": false, "devtools": false, "handleSIGHUP": true, "handleSIGINT": true, "handleSIGTERM": true, "slowMo": 0.0, "timeout": 30000.0, "tracesDir": "/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/browser/traces/temp/af7838d4-1cac-49d4-8dea-5614552d7d75"}</msg>
+<msg time="2025-12-24T01:07:12.480510" level="INFO">Starting Browser process /Users/fouadboudouhi/miniconda3/lib/python3.13/site-packages/Browser/wrapper/index.js using at 127.0.0.1:60661</msg>
+<msg time="2025-12-24T01:07:15.305968" level="INFO">Successfully created browser with options: {"browser":"chromium","headless":true,"chromiumSandbox":false,"devtools":false,"handleSIGHUP":true,"handleSIGINT":true,"handleSIGTERM":true,"slowMo":0,"timeout":30000,"tracesDir":"/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/browser/traces/temp/af7838d4-1cac-49d4-8dea-5614552d7d75"}</msg>
+<arg>chromium</arg>
+<arg>headless=true</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Create a new playwright Browser with specified options.</doc>
+<status status="PASS" start="2025-12-24T01:07:12.465962" elapsed="2.840204"/>
+</kw>
+<kw name="New Page" owner="Browser">
+<msg time="2025-12-24T01:07:15.716216" level="INFO">Successfully initialized new page object and opened url: https://practicesoftwaretesting.com</msg>
+<msg time="2025-12-24T01:07:15.716391" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>%{BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2025-12-24T01:07:15.306388" elapsed="0.410247"/>
+</kw>
+<status status="PASS" start="2025-12-24T01:07:12.465713" elapsed="3.251094"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2025-12-24T01:07:15.717519" level="INFO">Clicks the element 'css=.card &gt;&gt; nth=0'.</msg>
+<arg>css=.card &gt;&gt; nth=0</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2025-12-24T01:07:15.716989" elapsed="0.229097"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2025-12-24T01:07:15.946478" level="INFO">Clicks the element 'text=Add to cart'.</msg>
+<arg>text=Add to cart</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2025-12-24T01:07:15.946218" elapsed="0.198171"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2025-12-24T01:07:16.940415" level="INFO">Waited for Element with selector text=Shopping cart at state visible</msg>
+<arg>text=Shopping cart</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2025-12-24T01:07:16.144533" elapsed="0.796244"/>
+</kw>
+<kw name="Close Toolshop" owner="common">
+<kw name="Close Browser" owner="Browser">
+<msg time="2025-12-24T01:07:16.981272" level="INFO">Closed browser</msg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2025-12-24T01:07:16.942369" elapsed="0.039016"/>
+</kw>
+<status status="PASS" start="2025-12-24T01:07:16.941486" elapsed="0.039976"/>
+</kw>
+<status status="PASS" start="2025-12-24T01:07:12.465485" elapsed="4.516107"/>
+</test>
+<status status="PASS" start="2025-12-24T01:07:12.395066" elapsed="4.590113"/>
+</suite>
+<suite id="s1-s2" name="Home" source="/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/ui-tests/smoke/home.robot">
+<test id="s1-s2-t1" name="Homepage Is Reachable" line="5">
+<kw name="Open Toolshop" owner="common">
+<kw name="New Browser" owner="Browser">
+<msg time="2025-12-24T01:07:16.990311" level="INFO">{"browser": "chromium", "headless": true, "chromiumSandbox": false, "devtools": false, "handleSIGHUP": true, "handleSIGINT": true, "handleSIGTERM": true, "slowMo": 0.0, "timeout": 30000.0, "tracesDir": "/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/browser/traces/temp/eb9983a8-54bb-463c-afa7-d3b92db8d932"}</msg>
+<msg time="2025-12-24T01:07:17.077569" level="INFO">Successfully created browser with options: {"browser":"chromium","headless":true,"chromiumSandbox":false,"devtools":false,"handleSIGHUP":true,"handleSIGINT":true,"handleSIGTERM":true,"slowMo":0,"timeout":30000,"tracesDir":"/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/browser/traces/temp/eb9983a8-54bb-463c-afa7-d3b92db8d932"}</msg>
+<arg>chromium</arg>
+<arg>headless=true</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Create a new playwright Browser with specified options.</doc>
+<status status="PASS" start="2025-12-24T01:07:16.989961" elapsed="0.087723"/>
+</kw>
+<kw name="New Page" owner="Browser">
+<msg time="2025-12-24T01:07:17.369434" level="INFO">Successfully initialized new page object and opened url: https://practicesoftwaretesting.com</msg>
+<msg time="2025-12-24T01:07:17.369511" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>%{BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2025-12-24T01:07:17.078011" elapsed="0.291615"/>
+</kw>
+<status status="PASS" start="2025-12-24T01:07:16.989818" elapsed="0.379880"/>
+</kw>
+<kw name="Get Title" owner="Browser">
+<msg time="2025-12-24T01:07:17.372103" level="INFO">Title: 'Practice Software Testing - Toolshop - v5.0'</msg>
+<tag>Assertion</tag>
+<tag>Getter</tag>
+<tag>PageContent</tag>
+<doc>Returns the title of the current page.</doc>
+<status status="PASS" start="2025-12-24T01:07:17.369799" elapsed="0.002337"/>
+</kw>
+<kw name="Close Toolshop" owner="common">
+<kw name="Close Browser" owner="Browser">
+<msg time="2025-12-24T01:07:17.385961" level="INFO">Closed browser</msg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2025-12-24T01:07:17.372372" elapsed="0.013671"/>
+</kw>
+<status status="PASS" start="2025-12-24T01:07:17.372246" elapsed="0.013848"/>
+</kw>
+<status status="PASS" start="2025-12-24T01:07:16.989061" elapsed="0.397117"/>
+</test>
+<status status="PASS" start="2025-12-24T01:07:16.987324" elapsed="0.400128"/>
+</suite>
+<suite id="s1-s3" name="Login" source="/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/ui-tests/smoke/login.robot">
+<test id="s1-s3-t1" name="Login Works" line="9">
+<kw name="Open Toolshop" owner="common">
+<kw name="New Browser" owner="Browser">
+<msg time="2025-12-24T01:07:17.390611" level="INFO">{"browser": "chromium", "headless": true, "chromiumSandbox": false, "devtools": false, "handleSIGHUP": true, "handleSIGINT": true, "handleSIGTERM": true, "slowMo": 0.0, "timeout": 30000.0, "tracesDir": "/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/browser/traces/temp/fec092ed-c000-4092-8433-e0997184a52a"}</msg>
+<msg time="2025-12-24T01:07:17.467487" level="INFO">Successfully created browser with options: {"browser":"chromium","headless":true,"chromiumSandbox":false,"devtools":false,"handleSIGHUP":true,"handleSIGINT":true,"handleSIGTERM":true,"slowMo":0,"timeout":30000,"tracesDir":"/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/browser/traces/temp/fec092ed-c000-4092-8433-e0997184a52a"}</msg>
+<arg>chromium</arg>
+<arg>headless=true</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Create a new playwright Browser with specified options.</doc>
+<status status="PASS" start="2025-12-24T01:07:17.390374" elapsed="0.077240"/>
+</kw>
+<kw name="New Page" owner="Browser">
+<msg time="2025-12-24T01:07:17.770996" level="INFO">Successfully initialized new page object and opened url: https://practicesoftwaretesting.com</msg>
+<msg time="2025-12-24T01:07:17.771043" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>%{BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2025-12-24T01:07:17.467809" elapsed="0.303305"/>
+</kw>
+<status status="PASS" start="2025-12-24T01:07:17.390274" elapsed="0.380892"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2025-12-24T01:07:17.771497" level="INFO">Clicks the element 'text=Sign in'.</msg>
+<arg>text=Sign in</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2025-12-24T01:07:17.771260" elapsed="0.134506"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2025-12-24T01:07:17.906235" level="INFO">Fills the text 'customer@practicesoftwaretesting.com' in the given field.</msg>
+<arg>id=email</arg>
+<arg>${EMAIL}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2025-12-24T01:07:17.905957" elapsed="0.006613"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2025-12-24T01:07:17.912981" level="FAIL">Keyword 'Browser.Fill Text' expected 2 to 3 arguments, got 1.</msg>
+<arg>id=password ${PASSWORD}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="FAIL" start="2025-12-24T01:07:17.912707" elapsed="0.000295">Keyword 'Browser.Fill Text' expected 2 to 3 arguments, got 1.</status>
+</kw>
+<kw name="Click" owner="Browser">
+<arg>text=Login</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="NOT RUN" start="2025-12-24T01:07:17.913068" elapsed="0.000028"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<arg>text=My account</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="NOT RUN" start="2025-12-24T01:07:17.913145" elapsed="0.000022"/>
+</kw>
+<kw name="Close Toolshop" owner="common">
+<status status="NOT RUN" start="2025-12-24T01:07:17.913234" elapsed="0.000022"/>
+</kw>
+<msg time="2025-12-24T01:07:17.916642" level="INFO">Switching context to context=89654b1a-9d13-4651-8fcc-981d9da05e6f in CURRENT</msg>
+<msg time="2025-12-24T01:07:17.918144" level="INFO">Successfully changed active context: context=89654b1a-9d13-4651-8fcc-981d9da05e6f</msg>
+<msg time="2025-12-24T01:07:17.920055" level="INFO">Successfully closed Context</msg>
+<status status="FAIL" start="2025-12-24T01:07:17.389719" elapsed="0.523609">Keyword 'Browser.Fill Text' expected 2 to 3 arguments, got 1.</status>
+</test>
+<status status="FAIL" start="2025-12-24T01:07:17.388585" elapsed="0.531697"/>
+</suite>
+<suite id="s1-s4" name="Navigation" source="/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/ui-tests/smoke/navigation.robot">
+<test id="s1-s4-t1" name="Navigation Works" line="5">
+<kw name="Open Toolshop" owner="common">
+<kw name="New Browser" owner="Browser">
+<msg time="2025-12-24T01:07:17.923280" level="INFO">Switching browser to browser=beadc921-64fa-497a-9fa6-67b7ed4616ed</msg>
+<msg time="2025-12-24T01:07:17.923679" level="INFO">Successfully changed active browser: browser=beadc921-64fa-497a-9fa6-67b7ed4616ed</msg>
+<msg time="2025-12-24T01:07:17.923704" level="INFO">Reusing existing browser with id: browser=beadc921-64fa-497a-9fa6-67b7ed4616ed</msg>
+<arg>chromium</arg>
+<arg>headless=true</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Create a new playwright Browser with specified options.</doc>
+<status status="PASS" start="2025-12-24T01:07:17.923111" elapsed="0.000612"/>
+</kw>
+<kw name="New Page" owner="Browser">
+<msg time="2025-12-24T01:07:18.140455" level="INFO">Successfully initialized new page object and opened url: https://practicesoftwaretesting.com</msg>
+<msg time="2025-12-24T01:07:18.140648" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>%{BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2025-12-24T01:07:17.923766" elapsed="0.216987"/>
+</kw>
+<status status="PASS" start="2025-12-24T01:07:17.923006" elapsed="0.217951"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2025-12-24T01:07:18.141388" level="INFO">Clicks the element 'text=Categories'.</msg>
+<msg time="2025-12-24T01:07:18.276412" level="INFO" html="true">&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3"&gt;&lt;a href="browser/screenshot/fail-screenshot-1.png" target="_blank"&gt;&lt;img src="browser/screenshot/fail-screenshot-1.png" width="800px"/&gt;&lt;/a&gt;</msg>
+<msg time="2025-12-24T01:07:18.276482" level="INFO">See also file:///Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/playwright-log.txt for additional details.</msg>
+<msg time="2025-12-24T01:07:18.276633" level="FAIL">Error: locator.click: Error: strict mode violation: locator('text=Categories') resolved to 2 elements:
+    1) &lt;a href="#" role="button" aria-expanded="false" data-bs-toggle="dropdown" data-test="nav-categories" _ngcontent-ng-c1334646923="" class="nav-link dropdown-toggle"&gt; Categories &lt;/a&gt; aka locator('[data-test="nav-categories"]')
+    2) &lt;legend class="visually-hidden" _ngcontent-ng-c3901630365=""&gt;Categories&lt;/legend&gt; aka getByRole('group', { name: 'Categories' }).locator('legend')
+
+Call log:
+  - waiting for locator('text=Categories')
+</msg>
+<arg>text=Categories</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="FAIL" start="2025-12-24T01:07:18.141087" elapsed="0.139984">Error: locator.click: Error: strict mode violation: locator('text=Categories') resolved to 2 elements:
+    1) &lt;a href="#" role="button" aria-expanded="false" data-bs-toggle="dropdown" data-test="nav-categories" _ngcontent-ng-c1334646923="" class="nav-link dropdown-toggle"&gt; Categories &lt;/a&gt; aka locator('[data-test="nav-categories"]')
+    2) &lt;legend class="visually-hidden" _ngcontent-ng-c3901630365=""&gt;Categories&lt;/legend&gt; aka getByRole('group', { name: 'Categories' }).locator('legend')
+
+Call log:
+  - waiting for locator('text=Categories')
+</status>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<arg>css=.card</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="NOT RUN" start="2025-12-24T01:07:18.281194" elapsed="0.000040"/>
+</kw>
+<kw name="Close Toolshop" owner="common">
+<status status="NOT RUN" start="2025-12-24T01:07:18.281312" elapsed="0.000024"/>
+</kw>
+<msg time="2025-12-24T01:07:18.284723" level="INFO">Switching context to context=3617fa34-a682-40b1-b0b3-663ce2b91de8 in CURRENT</msg>
+<msg time="2025-12-24T01:07:18.286405" level="INFO">Successfully changed active context: context=3617fa34-a682-40b1-b0b3-663ce2b91de8</msg>
+<msg time="2025-12-24T01:07:18.288132" level="INFO">Successfully closed Context</msg>
+<status status="FAIL" start="2025-12-24T01:07:17.922447" elapsed="0.358961">Error: locator.click: Error: strict mode violation: locator('text=Categories') resolved to 2 elements:
+    1) &lt;a href="#" role="button" aria-expanded="false" data-bs-toggle="dropdown" data-test="nav-categories" _ngcontent-ng-c1334646923="" class="nav-link dropdown-toggle"&gt; Categories &lt;/a&gt; aka locator('[data-test="nav-categories"]')
+    2) &lt;legend class="visually-hidden" _ngcontent-ng-c3901630365=""&gt;Categories&lt;/legend&gt; aka getByRole('group', { name: 'Categories' }).locator('legend')
+
+Call log:
+  - waiting for locator('text=Categories')
+</status>
+</test>
+<status status="FAIL" start="2025-12-24T01:07:17.921317" elapsed="0.367033"/>
+</suite>
+<suite id="s1-s5" name="Product" source="/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/ui-tests/smoke/product.robot">
+<test id="s1-s5-t1" name="Product Detail Page Loads" line="5">
+<kw name="Open Toolshop" owner="common">
+<kw name="New Browser" owner="Browser">
+<msg time="2025-12-24T01:07:18.291244" level="INFO">Switching browser to browser=beadc921-64fa-497a-9fa6-67b7ed4616ed</msg>
+<msg time="2025-12-24T01:07:18.291586" level="INFO">Successfully changed active browser: browser=beadc921-64fa-497a-9fa6-67b7ed4616ed</msg>
+<msg time="2025-12-24T01:07:18.291609" level="INFO">Reusing existing browser with id: browser=beadc921-64fa-497a-9fa6-67b7ed4616ed</msg>
+<arg>chromium</arg>
+<arg>headless=true</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Create a new playwright Browser with specified options.</doc>
+<status status="PASS" start="2025-12-24T01:07:18.291070" elapsed="0.000557"/>
+</kw>
+<kw name="New Page" owner="Browser">
+<msg time="2025-12-24T01:07:18.586385" level="INFO">Successfully initialized new page object and opened url: https://practicesoftwaretesting.com</msg>
+<msg time="2025-12-24T01:07:18.586438" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>%{BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2025-12-24T01:07:18.291670" elapsed="0.294999"/>
+</kw>
+<status status="PASS" start="2025-12-24T01:07:18.290973" elapsed="0.295820"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2025-12-24T01:07:18.587254" level="INFO">Clicks the element 'css=.card &gt;&gt; nth=0'.</msg>
+<arg>css=.card &gt;&gt; nth=0</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2025-12-24T01:07:18.586917" elapsed="0.052027"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2025-12-24T01:07:28.718533" level="INFO" html="true">&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3"&gt;&lt;a href="browser/screenshot/fail-screenshot-2.png" target="_blank"&gt;&lt;img src="browser/screenshot/fail-screenshot-2.png" width="800px"/&gt;&lt;/a&gt;</msg>
+<msg time="2025-12-24T01:07:28.718605" level="INFO">See also file:///Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/playwright-log.txt for additional details.</msg>
+<msg time="2025-12-24T01:07:28.718675" level="FAIL">Error: locator.waitFor: Error: strict mode violation: locator('button') resolved to 6 elements:
+    1) &lt;button class="testing-guide-btn" _ngcontent-ng-c1334646923=""&gt; Testing Guide &lt;/button&gt; aka getByRole('button', { name: 'Testing Guide' })
+    2) &lt;button class="bug-hunting-btn" _ngcontent-ng-c1334646923=""&gt; 🐛 Bug Hunting &lt;/button&gt; aka getByRole('button', { name: '🐛 Bug Hunting' })
+    3) &lt;button type="button" aria-expanded="false" class="navbar-toggler" data-bs-toggle="collapse" _ngcontent-ng-c1334646923="" aria-label="Toggle navigation" aria-controls="navbarSupportedContent" data-bs-target="#navbarSupportedContent"&gt;…&lt;/button&gt; aka getByLabel('Toggle navigation')
+    4) &lt;button id="language" type="button" aria-hidden="true" aria-expanded="false" data-bs-toggle="dropdown" data-test="language-select" _ngcontent-ng-c1334646923="" class="btn nav-link dropdown-toggle"&gt;…&lt;/button&gt; aka locator('[data-test="language-select"]')
+    5) &lt;button type="reset" class="btn btn-warning" data-test="search-reset" _ngcontent-ng-c3901630365=""&gt;X &lt;/button&gt; aka locator('[data-test="search-reset"]')
+    6) &lt;button type="submit" data-test="search-submit" class="btn btn-secondary" _ngcontent-ng-c3901630365=""&gt;Search &lt;/button&gt; aka locator('[data-test="search-submit"]')
+
+Call log:
+  - waiting for locator('button') to be visible
+</msg>
+<arg>css=button</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="FAIL" start="2025-12-24T01:07:18.639073" elapsed="10.081027">Error: locator.waitFor: Error: strict mode violation: locator('button') resolved to 6 elements:
+    1) &lt;button class="testing-guide-btn" _ngcontent-ng-c1334646923=""&gt; Testing Guide &lt;/button&gt; aka getByRole('button', { name: 'Testing Guide' })
+    2) &lt;button class="bug-hunting-btn" _ngcontent-ng-c1334646923=""&gt; 🐛 Bug Hunting &lt;/button&gt; aka getByRole('button', { name: '🐛 Bug Hunting' })
+    3) &lt;button type="button" aria-expanded="false" class="navbar-toggler" data-bs-toggle="collapse" _ngcontent-ng-c1334646923="" aria-label="Toggle navigation" aria-controls="navbarSupportedContent" data-bs-target="#navbarSupportedContent"&gt;…&lt;/button&gt; aka getByLabel('Toggle navigation')
+    4) &lt;button id="language" type="button" aria-hidden="true" aria-expanded="false" data-bs-toggle="dropdown" data-test="language-select" _ngcontent-ng-c1334646923="" class="btn nav-link dropdown-toggle"&gt;…&lt;/button&gt; aka locator('[data-test="language-select"]')
+    5) &lt;button type="reset" class="btn btn-warning" data-test="search-reset" _ngcontent-ng-c3901630365=""&gt;X &lt;/button&gt; aka locator('[data-test="search-reset"]')
+    6) &lt;button type="submit" data-test="search-submit" class="btn btn-secondary" _ngcontent-ng-c3901630365=""&gt;Search &lt;/button&gt; aka locator('[data-test="search-submit"]')
+
+Call log:
+  - waiting for locator('button') to be visible
+</status>
+</kw>
+<kw name="Close Toolshop" owner="common">
+<status status="NOT RUN" start="2025-12-24T01:07:28.720324" elapsed="0.000050"/>
+</kw>
+<msg time="2025-12-24T01:07:28.726848" level="INFO">Switching context to context=6810ada6-a71f-475d-a0a7-8c1ac62b8d42 in CURRENT</msg>
+<msg time="2025-12-24T01:07:28.728380" level="INFO">Successfully changed active context: context=6810ada6-a71f-475d-a0a7-8c1ac62b8d42</msg>
+<msg time="2025-12-24T01:07:28.730381" level="INFO">Successfully closed Context</msg>
+<status status="FAIL" start="2025-12-24T01:07:18.290523" elapsed="10.429943">Error: locator.waitFor: Error: strict mode violation: locator('button') resolved to 6 elements:
+    1) &lt;button class="testing-guide-btn" _ngcontent-ng-c1334646923=""&gt; Testing Guide &lt;/button&gt; aka getByRole('button', { name: 'Testing Guide' })
+    2) &lt;button class="bug-hunting-btn" _ngcontent-ng-c1334646923=""&gt; 🐛 Bug Hunting &lt;/button&gt; aka getByRole('button', { name: '🐛 Bug Hunting' })
+    3) &lt;button type="button" aria-expanded="false" class="navbar-toggler" data-bs-toggle="collapse" _ngcontent-ng-c1334646923="" aria-label="Toggle navigation" aria-controls="navbarSupportedContent" data-bs-target="#navbarSupportedContent"&gt;…&lt;/button&gt; aka getByLabel('Toggle navigation')
+    4) &lt;button id="language" type="button" aria-hidden="true" aria-expanded="false" data-bs-toggle="dropdown" data-test="language-select" _ngcontent-ng-c1334646923="" class="btn nav-link dropdown-toggle"&gt;…&lt;/button&gt; aka locator('[data-test="language-select"]')
+    5) &lt;button type="reset" class="btn btn-warning" data-test="search-reset" _ngcontent-ng-c3901630365=""&gt;X &lt;/button&gt; aka locator('[data-test="search-reset"]')
+    6) &lt;button type="submit" data-test="search-submit" class="btn btn-secondary" _ngcontent-ng-c3901630365=""&gt;Search &lt;/button&gt; aka locator('[data-test="search-submit"]')
+
+Call log:
+  - waiting for locator('button') to be visible
+</status>
+</test>
+<status status="FAIL" start="2025-12-24T01:07:18.289427" elapsed="10.441201"/>
+</suite>
+<suite id="s1-s6" name="Search" source="/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/ui-tests/smoke/search.robot">
+<test id="s1-s6-t1" name="Search Returns Results" line="5">
+<kw name="Open Toolshop" owner="common">
+<kw name="New Browser" owner="Browser">
+<msg time="2025-12-24T01:07:28.733542" level="INFO">Switching browser to browser=beadc921-64fa-497a-9fa6-67b7ed4616ed</msg>
+<msg time="2025-12-24T01:07:28.733901" level="INFO">Successfully changed active browser: browser=beadc921-64fa-497a-9fa6-67b7ed4616ed</msg>
+<msg time="2025-12-24T01:07:28.733926" level="INFO">Reusing existing browser with id: browser=beadc921-64fa-497a-9fa6-67b7ed4616ed</msg>
+<arg>chromium</arg>
+<arg>headless=true</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Create a new playwright Browser with specified options.</doc>
+<status status="PASS" start="2025-12-24T01:07:28.733358" elapsed="0.000622"/>
+</kw>
+<kw name="New Page" owner="Browser">
+<msg time="2025-12-24T01:07:29.030394" level="INFO">Successfully initialized new page object and opened url: https://practicesoftwaretesting.com</msg>
+<msg time="2025-12-24T01:07:29.030442" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>%{BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2025-12-24T01:07:28.734029" elapsed="0.296489"/>
+</kw>
+<status status="PASS" start="2025-12-24T01:07:28.733238" elapsed="0.297414"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2025-12-24T01:07:29.031409" level="INFO">Fills the text 'hammer' in the given field.</msg>
+<msg time="2025-12-24T01:07:39.140380" level="INFO" html="true">&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3"&gt;&lt;a href="browser/screenshot/fail-screenshot-3.png" target="_blank"&gt;&lt;img src="browser/screenshot/fail-screenshot-3.png" width="800px"/&gt;&lt;/a&gt;</msg>
+<msg time="2025-12-24T01:07:39.140445" level="INFO">See also file:///Users/fouadboudouhi/Projekte/test-automation-practice-toolshop/playwright-log.txt for additional details.</msg>
+<msg time="2025-12-24T01:07:39.140501" level="FAIL">TimeoutError: locator.fill: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('input[type="search"]')
+</msg>
+<arg>css=input[type="search"]</arg>
+<arg>hammer</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="FAIL" start="2025-12-24T01:07:29.030930" elapsed="10.110143">TimeoutError: locator.fill: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('input[type="search"]')
+</status>
+</kw>
+<kw name="Press Keys" owner="Browser">
+<arg>css=input[type="search"]</arg>
+<arg>Enter</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Types the given key combination into element found by ``selector``.</doc>
+<status status="NOT RUN" start="2025-12-24T01:07:39.141189" elapsed="0.000045"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<arg>css=.card</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="NOT RUN" start="2025-12-24T01:07:39.141294" elapsed="0.000020"/>
+</kw>
+<kw name="Close Toolshop" owner="common">
+<status status="NOT RUN" start="2025-12-24T01:07:39.141386" elapsed="0.000021"/>
+</kw>
+<msg time="2025-12-24T01:07:39.144567" level="INFO">Switching context to context=f5588b05-4f8e-4470-a5e7-37779a3ad7a0 in CURRENT</msg>
+<msg time="2025-12-24T01:07:39.146093" level="INFO">Successfully changed active context: context=f5588b05-4f8e-4470-a5e7-37779a3ad7a0</msg>
+<msg time="2025-12-24T01:07:39.148020" level="INFO">Successfully closed Context</msg>
+<status status="FAIL" start="2025-12-24T01:07:28.732771" elapsed="10.408700">TimeoutError: locator.fill: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('input[type="search"]')
+</status>
+</test>
+<status status="FAIL" start="2025-12-24T01:07:28.731647" elapsed="10.416554"/>
+</suite>
+<status status="FAIL" start="2025-12-24T01:07:12.377870" elapsed="26.771353"/>
+</suite>
+<statistics>
+<total>
+<stat pass="2" fail="4" skip="0">All Tests</stat>
+</total>
+<tag>
+</tag>
+<suite>
+<stat name="Smoke" id="s1" pass="2" fail="4" skip="0">Smoke</stat>
+<stat name="Cart" id="s1-s1" pass="1" fail="0" skip="0">Smoke.Cart</stat>
+<stat name="Home" id="s1-s2" pass="1" fail="0" skip="0">Smoke.Home</stat>
+<stat name="Login" id="s1-s3" pass="0" fail="1" skip="0">Smoke.Login</stat>
+<stat name="Navigation" id="s1-s4" pass="0" fail="1" skip="0">Smoke.Navigation</stat>
+<stat name="Product" id="s1-s5" pass="0" fail="1" skip="0">Smoke.Product</stat>
+<stat name="Search" id="s1-s6" pass="0" fail="1" skip="0">Smoke.Search</stat>
+</suite>
+</statistics>
+<errors>
+</errors>
+</robot>

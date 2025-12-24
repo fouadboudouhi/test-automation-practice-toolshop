@@ -4,9 +4,34 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7ae2f2ca-10e7-4f2f-9794-670ee37a8f0b" name="Changes" comment="ci: finalize GitHub Actions pipeline with Docker-based test execution&#10;&#10;- trigger CI on pull requests, main branch pushes, and manual dispatch&#10;- run API tests as hard quality gate&#10;- execute minimal UI test suite after API validation&#10;- collect Allure results as CI artifacts&#10;- ensure clean startup and teardown of services">
+    <list default="true" id="7ae2f2ca-10e7-4f2f-9794-670ee37a8f0b" name="Changes" comment="docs: add pinned requirements and document dependencies in README&#10;&#10;- add requirements.txt as single source of truth for dependencies&#10;- document runtime and test dependencies in README&#10;- align local, Docker and CI environments">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/ci.yml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/crud.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/deps.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/routes.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/schemas.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/db/config.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/db/init_db.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/db/session.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/user.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/web/routes.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/web/templates/index.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker/Dockerfile.api-tests" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker/Dockerfile.app" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker/Dockerfile.ui-tests" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pytest.ini" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/api/test_users_api.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/conftest.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/ui/conftest.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/ui/test_users_ui.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/utils/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/utils/wait.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -23,12 +48,12 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {}
-}]]></component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {}
+}</component>
   <component name="GithubPullRequestsUISettings"><![CDATA[{
   "selectedUrlAndAccountId": {
-    "url": "https://github.com/fouadboudouhi/test-automation-user-management.git",
+    "url": "https://github.com/fouadboudouhi/test-automation-practice-toolshop.git",
     "accountId": "1b42bb84-86ff-437f-a488-9ac553db2805"
   }
 }]]></component>
@@ -40,22 +65,22 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/fouadboudouhi/Projekte/test-automation-user-management&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/fouadboudouhi/Projekte/test-automation-practice-toolshop",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -97,16 +122,28 @@
       <option name="project" value="LOCAL" />
       <updated>1766503801246</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="docs: add pinned requirements and document dependencies in README&#10;&#10;- add requirements.txt as single source of truth for dependencies&#10;- document runtime and test dependencies in README&#10;- align local, Docker and CI environments">
+      <option name="closed" value="true" />
+      <created>1766525863013</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1766525863013</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="UnknownFeatures">
+    <option featureType="com.intellij.fileTypeFactory" implementationName="*.app" />
+  </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="feat: turn project skeleton into fully testable user management system&#10;&#10;- implement full user CRUD API using FastAPI&#10;- add PostgreSQL persistence with SQLAlchemy ORM&#10;- enforce data integrity via unique email constraint&#10;- introduce deterministic API tests with database reset per test&#10;- add health endpoint and explicit readiness waiting for stable test execution&#10;- provide minimal web UI only for critical UI test coverage&#10;- dockerize app, tests and database for identical local and CI execution&#10;- fix missing runtime dependency required for EmailStr validation" />
     <MESSAGE value="feat: stabilize UI tests and integrate Allure reporting&#10;&#10;- fix UI test scope to validate user intent instead of backend state&#10;- resolve flaky UI assertions by removing implicit data assumptions&#10;- add Allure reporting for API and UI tests&#10;- attach screenshots on UI test failures&#10;- ensure pytest markers are properly registered in containers&#10;- fix missing runtime dependencies in app container&#10;- align local and container test execution for reproducibility" />
     <MESSAGE value="ci: finalize GitHub Actions pipeline with Docker-based test execution&#10;&#10;- trigger CI on pull requests, main branch pushes, and manual dispatch&#10;- run API tests as hard quality gate&#10;- execute minimal UI test suite after API validation&#10;- collect Allure results as CI artifacts&#10;- ensure clean startup and teardown of services" />
-    <option name="LAST_COMMIT_MESSAGE" value="ci: finalize GitHub Actions pipeline with Docker-based test execution&#10;&#10;- trigger CI on pull requests, main branch pushes, and manual dispatch&#10;- run API tests as hard quality gate&#10;- execute minimal UI test suite after API validation&#10;- collect Allure results as CI artifacts&#10;- ensure clean startup and teardown of services" />
+    <MESSAGE value="docs: add pinned requirements and document dependencies in README&#10;&#10;- add requirements.txt as single source of truth for dependencies&#10;- document runtime and test dependencies in README&#10;- align local, Docker and CI environments" />
+    <option name="LAST_COMMIT_MESSAGE" value="docs: add pinned requirements and document dependencies in README&#10;&#10;- add requirements.txt as single source of truth for dependencies&#10;- document runtime and test dependencies in README&#10;- align local, Docker and CI environments" />
   </component>
 </project>
