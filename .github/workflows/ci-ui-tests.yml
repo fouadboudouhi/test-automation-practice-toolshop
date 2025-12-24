@@ -33,39 +33,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create CI compose override (replace arm64-only services)
+      - name: Create CI compose override (fix ports + arm64-only services)
         shell: bash
         run: |
           set -euo pipefail
           cat > "${COMPOSE_OVERRIDE}" <<'YAML'
           services:
-            # Replace arm64-only "web" with a dummy amd64-friendly container.
-            # Keep the service name so compose doesn't break dependency graphs.
+            # Keep service name "web" to satisfy dependency graph,
+            # but REMOVE host port bindings to avoid 8091 conflicts.
             web:
               image: alpine:3.20
               command: ["sh", "-c", "sleep infinity"]
-              ports: []
+              ports: null
               depends_on: []
 
-            # cron is not required for UI tests; replace with dummy too.
+            # cron not needed for tests; replace with dummy too
             cron:
               image: alpine:3.20
               command: ["sh", "-c", "sleep infinity"]
               depends_on: []
 
-            # Expose API directly for API_DOC_URL
+            # Expose API directly on 8091 for API_DOC_URL
             laravel-api:
               ports:
                 - "8091:80"
 
-            # IMPORTANT: in CI the UI depends on API directly (not on "web")
+            # In CI the UI depends on API directly (not on "web")
             angular-ui:
               depends_on:
                 - laravel-api
           YAML
-
-          echo "Override created at ${COMPOSE_OVERRIDE}:"
-          cat "${COMPOSE_OVERRIDE}"
 
           echo "Sanity check merged compose config..."
           docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" config >/dev/null
@@ -91,7 +88,7 @@ jobs:
             sleep 2
           done
           echo "API did not become reachable in time."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300 || true
           exit 1
 
       - name: Wait for DB to accept connections
@@ -108,7 +105,7 @@ jobs:
             sleep 2
           done
           echo "DB did not become ready in time."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300 || true
           exit 1
 
       - name: Migrate + seed database
@@ -145,7 +142,7 @@ jobs:
             sleep 2
           done
           echo "UI did not become reachable in time."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300 || true
           exit 1
 
       - name: Set up Python
@@ -214,7 +211,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create CI compose override (replace arm64-only services)
+      - name: Create CI compose override (fix ports + arm64-only services)
         shell: bash
         run: |
           set -euo pipefail
@@ -223,7 +220,7 @@ jobs:
             web:
               image: alpine:3.20
               command: ["sh", "-c", "sleep infinity"]
-              ports: []
+              ports: null
               depends_on: []
 
             cron:
@@ -262,7 +259,7 @@ jobs:
             sleep 2
           done
           echo "API did not become reachable in time."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300 || true
           exit 1
 
       - name: Wait for DB to accept connections
@@ -279,7 +276,7 @@ jobs:
             sleep 2
           done
           echo "DB did not become ready in time."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300 || true
           exit 1
 
       - name: Migrate + seed database
@@ -315,7 +312,7 @@ jobs:
             sleep 2
           done
           echo "UI did not become reachable in time."
-          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" logs --no-color | tail -n 300 || true
           exit 1
 
       - name: Set up Python
