@@ -33,32 +33,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create CI compose override (avoid arm64-only services)
+      - name: Create CI compose override (replace arm64-only services)
         shell: bash
         run: |
           set -euo pipefail
           cat > "${COMPOSE_OVERRIDE}" <<'YAML'
           services:
-            # arm64-only image -> don't use it in CI
+            # Replace arm64-only "web" with a dummy amd64-friendly container.
+            # Keep the service name so compose doesn't break dependency graphs.
             web:
-              profiles: ["ci-skip"]
+              image: alpine:3.20
+              command: ["sh", "-c", "sleep infinity"]
+              ports: []
+              depends_on: []
 
-            # cron not needed for UI tests (and may be arch-problematic)
+            # cron is not required for UI tests; replace with dummy too.
             cron:
-              profiles: ["ci-skip"]
+              image: alpine:3.20
+              command: ["sh", "-c", "sleep infinity"]
+              depends_on: []
 
-            # expose API directly for API_DOC_URL
+            # Expose API directly for API_DOC_URL
             laravel-api:
               ports:
                 - "8091:80"
 
-            # IMPORTANT: remove dependency on "web" in CI
+            # IMPORTANT: in CI the UI depends on API directly (not on "web")
             angular-ui:
               depends_on:
                 - laravel-api
           YAML
 
-          echo "Override file created at ${COMPOSE_OVERRIDE}:"
+          echo "Override created at ${COMPOSE_OVERRIDE}:"
           cat "${COMPOSE_OVERRIDE}"
 
           echo "Sanity check merged compose config..."
@@ -208,19 +214,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create CI compose override (avoid arm64-only services)
+      - name: Create CI compose override (replace arm64-only services)
         shell: bash
         run: |
           set -euo pipefail
           cat > "${COMPOSE_OVERRIDE}" <<'YAML'
           services:
             web:
-              profiles: ["ci-skip"]
+              image: alpine:3.20
+              command: ["sh", "-c", "sleep infinity"]
+              ports: []
+              depends_on: []
+
             cron:
-              profiles: ["ci-skip"]
+              image: alpine:3.20
+              command: ["sh", "-c", "sleep infinity"]
+              depends_on: []
+
             laravel-api:
               ports:
                 - "8091:80"
+
             angular-ui:
               depends_on:
                 - laravel-api
@@ -239,6 +253,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "Waiting for API on ${API_DOC_URL} ..."
           for i in {1..120}; do
             if curl -fsS "${API_DOC_URL}" >/dev/null 2>&1; then
               echo "API is reachable."
@@ -254,6 +269,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "Waiting for DB (${DB_SERVICE}) ..."
           for i in {1..60}; do
             if docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_OVERRIDE}" exec -T "${DB_SERVICE}" \
               sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
@@ -290,6 +306,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "Waiting for UI on ${BASE_URL} ..."
           for i in {1..120}; do
             if curl -fsS "${BASE_URL}" >/dev/null 2>&1; then
               echo "UI is reachable."
