@@ -1,0 +1,50 @@
+name: UI Test Automation CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ui-tests:
+    runs-on: ubuntu-latest
+
+    env:
+      BASE_URL: https://practicesoftwaretesting.com
+      DEMO_EMAIL: customer@practicesoftwaretesting.com
+      DEMO_PASSWORD: welcome01
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          rfbrowser init
+
+      # SMOKE = QUALITY GATE
+      - name: Run UI Smoke Tests
+        run: robot ui-tests/smoke
+
+      # REGRESSION = INFORMATIONAL
+      - name: Run UI Regression Tests
+        continue-on-error: true
+        run: robot ui-tests/regression
+
+      - name: Upload Robot Reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: robot-reports
+          path: |
+            output.xml
+            log.html
+            report.html
