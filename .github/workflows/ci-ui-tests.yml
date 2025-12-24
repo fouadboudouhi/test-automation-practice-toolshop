@@ -30,21 +30,40 @@ jobs:
           pip install -r requirements.txt
           rfbrowser init
 
+      # -------------------------
       # SMOKE = QUALITY GATE
+      # -------------------------
       - name: Run UI Smoke Tests
-        run: robot ui-tests/smoke
+        run: |
+          robot -d artifacts/smoke ui-tests/smoke
 
+      # -------------------------
       # REGRESSION = INFORMATIONAL
+      # -------------------------
       - name: Run UI Regression Tests
         continue-on-error: true
-        run: robot ui-tests/regression
+        run: |
+          robot -d artifacts/regression ui-tests/regression
 
+      # -------------------------
+      # ARTEFACTS (ALWAYS)
+      # -------------------------
       - name: Upload Robot Reports
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: robot-reports
           path: |
-            output.xml
-            log.html
-            report.html
+            artifacts/**/output.xml
+            artifacts/**/log.html
+            artifacts/**/report.html
+
+      - name: Upload Browser Artifacts (Screenshots & Logs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-artifacts
+          path: |
+            browser/
+            playwright-log.txt
+            artifacts/**/browser/
