@@ -11,19 +11,20 @@ Open Toolshop
     New Browser    chromium    headless=true
     New Context
     ...    viewport={'width': 1920, 'height': 1080}
-    ...    recordVideo={'dir': 'artifacts/browser/videos'}
-    New Page       %{BASE_URL}
+    ...    userAgent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+    New Page       ${BASE_URL}
 
-    # CI-stable readiness
     Wait For Elements State    css=body    visible    timeout=30s
-
-    # Take screenshot automatically on any Browser failure
-    Register Keyword To Run On Failure    Capture Page Screenshot
+    Ensure Navigation Is Expanded
 
 
-Capture Page Screenshot
-    [Documentation]    Captures a screenshot on failure into a known CI folder.
-    Take Screenshot    artifacts/browser/screenshots
+Ensure Navigation Is Expanded
+    [Documentation]    Expands hamburger menu in CI/mobile mode if present.
+    ${toggle}=    Get Element Count    css=button.navbar-toggler
+    IF    ${toggle} > 0
+        Click    css=button.navbar-toggler
+        Wait For Elements State    css=[data-test="nav-sign-in"]    visible    timeout=20s
+    END
 
 
 Close Toolshop
