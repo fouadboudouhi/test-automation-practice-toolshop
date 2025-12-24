@@ -1,4 +1,4 @@
-name: UI Tests (Docker Profiles + Robot)
+name: UI Tests (Docker + Robot)
 
 on:
   push:
@@ -12,71 +12,72 @@ concurrency:
 
 jobs:
   ui-tests:
-    name: Smoke -> Regression (single stack)
     runs-on: ubuntu-latest
+    name: Smoke -> Regression (QGate)
 
     env:
+      COMPOSE_FILE: docker/docker-compose.yml
+      COMPOSE_PROJECT_NAME: ui-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # Avoid port collisions on shared runners
+      API_PORT: "18091"
+      UI_PORT: "4200"
+
+      API_DOC_URL: http://localhost:18091/api/documentation
       BASE_URL: http://localhost:4200
+
       HEADLESS: "true"
       DEMO_EMAIL: customer@practicesoftwaretesting.com
       DEMO_PASSWORD: welcome01
 
-      # keep compose deterministic and avoid collisions
-      COMPOSE_FILE: docker/docker-compose.yml
-      COMPOSE_PROJECT_NAME: ui-${{ github.run_id }}-${{ github.run_attempt }}
+      SEED_CMD: php artisan migrate:fresh --seed
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Start docker stack (CI profile = default)
+      - name: Start docker stack
         shell: bash
         run: |
           set -euo pipefail
           docker compose -f "${COMPOSE_FILE}" up -d --pull missing
           docker compose -f "${COMPOSE_FILE}" ps
 
-      - name: Wait for API (container-internal)
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Waiting for API via laravel-api health endpoint..."
-          for i in {1..120}; do
-            if docker compose -f "${COMPOSE_FILE}" exec -T laravel-api \
-              php -r 'exit(@file_get_contents("http://127.0.0.1/api/documentation") ? 0 : 1);' >/dev/null 2>&1; then
-              echo "API reachable."
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "API not reachable in time."
-          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
-          exit 1
-
-      - name: Wait for DB
+      - name: Wait for DB (mariadb)
         shell: bash
         run: |
           set -euo pipefail
           echo "Waiting for DB..."
-          for i in {1..60}; do
+          for i in {1..90}; do
             if docker compose -f "${COMPOSE_FILE}" exec -T mariadb \
               sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
-              echo "DB ready."
+              echo "DB ready ✅"
               exit 0
             fi
             sleep 2
           done
-          echo "DB not ready in time."
+          echo "DB not ready ❌"
           docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
           exit 1
 
-      - name: Migrate + seed
+      - name: Migrate + seed (retry)
         shell: bash
         run: |
           set -euo pipefail
-          docker compose -f "${COMPOSE_FILE}" exec -T laravel-api php artisan migrate:fresh --seed
+          echo "Seeding with retries..."
+          for i in {1..20}; do
+            if docker compose -f "${COMPOSE_FILE}" exec -T laravel-api ${SEED_CMD}; then
+              echo "Seed OK ✅"
+              exit 0
+            fi
+            echo "Seed failed (attempt $i) - retrying in 3s..."
+            sleep 3
+          done
+          echo "Seed failed permanently ❌"
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
+          exit 1
 
-      - name: Verify seed (products > 0)
+      - name: Verify seed (products must exist)
         shell: bash
         run: |
           set -euo pipefail
@@ -85,10 +86,26 @@ jobs:
           COUNT="$(echo "${OUT}" | tr -dc '0-9' || true)"
           echo "Product count: ${COUNT}"
           if [[ -z "${COUNT}" || "${COUNT}" -le 0 ]]; then
-            echo "Seed verification failed."
+            echo "Seed verification failed ❌"
             echo "${OUT}"
             exit 1
           fi
+
+      - name: Wait for API via nginx (API_DOC_URL)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Waiting for API on ${API_DOC_URL} ..."
+          for i in {1..120}; do
+            if curl -fsS "${API_DOC_URL}" >/dev/null 2>&1; then
+              echo "API reachable ✅"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API not reachable ❌"
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
+          exit 1
 
       - name: Wait for UI
         shell: bash
@@ -97,12 +114,12 @@ jobs:
           echo "Waiting for UI on ${BASE_URL} ..."
           for i in {1..120}; do
             if curl -fsS "${BASE_URL}" >/dev/null 2>&1; then
-              echo "UI reachable."
+              echo "UI reachable ✅"
               exit 0
             fi
             sleep 2
           done
-          echo "UI not reachable in time."
+          echo "UI not reachable ❌"
           docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
           exit 1
 
@@ -145,10 +162,10 @@ jobs:
         if: steps.smoke.outcome != 'success'
         shell: bash
         run: |
-          echo "Smoke failed -> stopping pipeline (Regression will not run)."
+          echo "Smoke failed -> stop."
           exit 1
 
-      - name: Run Regression (must pass)
+      - name: Run Regression
         id: regression
         continue-on-error: true
         shell: bash
@@ -167,7 +184,7 @@ jobs:
         if: steps.regression.outcome != 'success'
         shell: bash
         run: |
-          echo "Regression failed -> workflow fails (real bug)."
+          echo "Regression failed -> workflow fails (bug)."
           exit 1
 
       - name: Docker logs (on failure)

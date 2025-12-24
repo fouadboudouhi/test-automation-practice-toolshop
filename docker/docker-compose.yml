@@ -1,6 +1,8 @@
 services:
   mariadb:
     image: yobasystems/alpine-mariadb:10.6.11
+    ports:
+      - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_USER: user
@@ -14,9 +16,9 @@ services:
 
   laravel-api:
     image: testsmith/practice-software-testing-${SPRINT:-sprint5}-api
+    platform: linux/amd64
     depends_on:
-      mariadb:
-        condition: service_healthy
+      - mariadb
     environment:
       PHP_OPCACHE_VALIDATE_TIMESTAMPS: "1"
       DB_PORT: "3306"
@@ -25,53 +27,26 @@ services:
       DISABLE_LOGGING: "${DISABLE_LOGGING:-true}"
     volumes:
       - laravel-app-code:/var/www
-    healthcheck:
-      # No host port needed; check internally.
-      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1/api/documentation\") ? 0 : 1);'"]
-      interval: 3s
-      timeout: 3s
-      retries: 80
+
+  web:
+    image: nginx:1.25-alpine
+    ports:
+      - "${API_PORT:-8091}:80"
+    depends_on:
+      - laravel-api
+    volumes:
+      # NOTE: compose file is in docker/, so this is docker/nginx/default.conf in the repo
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - laravel-app-code:/var/www:ro
 
   angular-ui:
     image: testsmith/practice-software-testing-${SPRINT:-sprint5}-ui
+    platform: linux/amd64
     ports:
-      - "4200:4200"
+      - "${UI_PORT:-4200}:4200"
     command: bash -c "ng serve --host 0.0.0.0 --port 4200"
     depends_on:
-      laravel-api:
-        condition: service_healthy
-
-  # Optional local-only reverse proxy / docs (CI skips this completely)
-  web:
-    profiles: ["local"]
-    image: testsmith/practice-software-testing-web
-    ports:
-      - "8091:80"
-      - "8000:81"
-    depends_on:
-      laravel-api:
-        condition: service_healthy
-
-  # Optional local-only cron (CI skips)
-  cron:
-    profiles: ["local"]
-    image: testsmith/practice-software-testing-cron
-    restart: always
-    depends_on:
-      mariadb:
-        condition: service_healthy
-      laravel-api:
-        condition: service_healthy
-    volumes:
-      - laravel-app-code:/var/www
-    working_dir: /var/www
-    command: sh -c "crond -f -l 8"
-    environment:
-      PHP_OPCACHE_VALIDATE_TIMESTAMPS: "1"
-      DB_PORT: "3306"
-      DB_HOST: mariadb
-      host: localhost
-      DISABLE_LOGGING: "${DISABLE_LOGGING:-true}"
+      - web
 
 volumes:
   laravel-app-code:

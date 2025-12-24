@@ -1,263 +1,147 @@
 # Test Automation – Practice Software Testing (Toolshop)
 
-Dieses Repository enthält UI-Testautomatisierung mit **Robot Framework** + **Robot Framework Browser (Playwright)** gegen eine lokal/CI gestartete **Docker-Compose** Instanz der *Practice Software Testing / Toolshop* Anwendung.
+Dieses Repository enthält UI-Testautomatisierung mit **Robot Framework** + **robotframework-browser (Playwright)**.
+Getestet wird gegen eine **lokal/CI gestartete Toolshop-Instanz via Docker Compose**, damit die Tests nicht von Cloudflare/Anti-Bot abhängig sind.
 
-Ziele:
-- **Smoke Tests** laufen schnell als **Quality Gate** (Push/PR).
-- **Regression Tests** laufen nach dem Gate und **dürfen** Bugs zuverlässig rot machen.
-- **Deterministische Testdaten** durch DB **migrate + seed** vor jedem Lauf.
-- **Saubere Artefakte** (Robot Report/Log/Output + Screenshots) lokal und in GitHub Actions.
+## Ziele
 
----
-
-## Architektur (ASCII)
-
-```
-                 ┌──────────────────────────────────────────────────┐
-                 │                 GitHub Actions CI                │
-                 │        (ubuntu-latest, Python 3.11, headless)    │
-                 └──────────────────────────────────────────────────┘
-                                   │
-                                   │  docker compose up
-                                   ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                             Docker Compose Stack                             │
-│                                                                              │
-│   ┌───────────────┐     ┌─────────────────────┐     ┌─────────────────────┐  │
-│   │  angular-ui   │     │        web          │     │     laravel-api     │  │
-│   │  :4200        │<--->│ :8091 (proxy/api)   │<--->│ (php-fpm/app)       │  │
-│   └───────────────┘     └─────────────────────┘     └─────────┬───────────┘  │
-│                                                               │              │
-│                                                               ▼              │
-│                                                     ┌───────────────────┐    │
-│                                                     │      mariadb      │    │
-│                                                     │      :3306        │    │
-│                                                     └───────────────────┘    │
-└──────────────────────────────────────────────────────────────────────────────┘
-                                   │
-                                   │ Robot Framework Browser (Playwright)
-                                   ▼
-                      ┌─────────────────────────────────┐
-                      │     Robot UI Tests (ui-tests)   │
-                      │  - smoke (tag: smoke)           │
-                      │  - regression (tag: regression) │
-                      └─────────────────────────────────┘
-```
-
-Wichtig: **UI erreichbar ≠ DB ready**. Daher warten wir explizit auf DB-Readiness und führen **migrate:fresh --seed** aus.
+- **Smoke Tests** laufen schnell als **Quality Gate** bei jedem Push/PR.
+- **Regression Tests** laufen **nur wenn Smoke grün ist** und machen den Workflow **rot**, wenn ein echter Bug in der App existiert.
+- **Deterministische Testdaten**: vor jedem Lauf wird die DB per **migrate:fresh --seed** neu aufgebaut.
+- **Saubere Artefakte**: Robot `output.xml`, `log.html`, `report.html` + Screenshots als CI-Artifacts.
 
 ---
 
-## Projektstruktur (Kurz)
+## Architektur
 
 ```
-.
-├── .github/workflows/
-│   └── ci-ui-tests.yml               # CI: Docker stack + seed + smoke gate + regression
-├── docker/
-│   ├── docker-compose.yml            # Toolshop stack (UI/API/DB)
-│   └── .env                          # Stack-Konfiguration (Sprint, DB-Settings, etc.)
-├── Scripts/
-│   └── run_all.sh                    # Lokaler E2E Runner (up -> wait -> seed -> smoke -> regression)
-├── ui-tests/
-│   ├── resources/keywords/common.robot
-│   ├── smoke/                        # Smoke Suites
-│   └── regression/                   # Regression Suites
-├── requirements.txt                  # Python deps (robotframework, robotframework-browser, ...)
-├── Makefile                          # Convenience Targets (up/seed/smoke/regression/test-all)
-└── README.md
+┌────────────────────────────┐
+│ Robot Framework (Browser)  │
+│  - headless in CI          │
+│  - headed lokal (optional) │
+└───────────────┬────────────┘
+                │  BASE_URL (UI)
+                ▼
+        ┌─────────────────┐
+        │ Angular UI      │  http://localhost:4200
+        └────────┬────────┘
+                 │ API Calls
+                 ▼
+        ┌──────────────────┐
+        │ nginx (web)      │  http://localhost:8091
+        │  - HTTP Endpunkt │  /api/documentation
+        │  - fastcgi -> FPM│
+        └────────┬─────────┘
+                 ▼
+        ┌──────────────────┐
+        │ laravel-api (FPM)│  intern: :9000
+        └────────┬─────────┘
+                 ▼
+        ┌──────────────────┐
+        │ mariadb          │
+        └──────────────────┘
 ```
+
+**Warum nginx?**  
+Das `laravel-api` Image ist in der Praxis ein **PHP-FPM** Container (kein HTTP). nginx stellt den **HTTP-Einstieg** bereit und leitet PHP Requests via **FastCGI** an FPM weiter. Das macht `curl`-Readiness checks und CI stabil/deterministisch.
 
 ---
 
-## Voraussetzungen
+## Quickstart (lokal)
 
-### Lokal
+Voraussetzungen:
 - Docker Desktop / Docker Engine
-- Python 3.11+ (empfohlen) + pip
+- Python + Robot Framework Dependencies (siehe `requirements.txt`)
 
-### Python Dependencies installieren
+### 1) Stack starten
 ```bash
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+docker compose -f docker/docker-compose.yml up -d --pull missing
 ```
 
-### Playwright / Robot Browser initialisieren
+### 2) Datenbank seeden
+```bash
+docker compose -f docker/docker-compose.yml exec -T laravel-api php artisan migrate:fresh --seed
+```
+
+### 3) Browser (Playwright) initialisieren
 ```bash
 rfbrowser init
 ```
 
----
-
-## Quickstart (empfohlen)
-
-### 1) Einmal “frisch” starten (inkl. DB reset)
+### 4) Smoke / Regression ausführen
 ```bash
-make clean
-make up
-make seed
+robot --outputdir artifacts_local/smoke --include smoke ui-tests
+robot --outputdir artifacts_local/regression --include regression ui-tests
 ```
 
-### 2) Smoke (Quality Gate)
+Oder alles in einem:
 ```bash
-make smoke
-```
-
-### 3) Regression
-```bash
-make regression
-```
-
-### Oder alles in einem Rutsch
-```bash
-make test-all
-```
-
-Artefakte lokal:
-- Smoke: `artifacts_local/smoke/`
-- Regression: `artifacts_local/regression/`
-
----
-
-## Lokaler “One-Command” Runner: `run_all.sh`
-
-Der Runner startet den Stack, wartet auf API/DB, seedet deterministisch, führt Smoke als Gate aus und danach Regression.
-
-```bash
-chmod +x Scripts/run_all.sh
-./Scripts/run_all.sh
-```
-
-Option: Stack nach dem Run entfernen (inkl. Volumes/DB):
-```bash
-CLEANUP=true ./Scripts/run_all.sh
+bash Scripts/run_all.sh
 ```
 
 ---
 
-## Tags: Smoke vs Regression
+## Konfiguration (Environment Variablen)
 
-Wir nutzen Robot-Tags, damit wir unabhängig von Ordnerstrukturen selektiv laufen lassen können.
+Standardwerte sind in Scripts/CI bereits sinnvoll gesetzt.
 
-- Smoke Tests haben Tag: `smoke`
-- Regression Tests haben Tag: `regression`
+- `SPRINT` (default `sprint5`) – steuert die Docker Images `testsmith/practice-software-testing-${SPRINT}-...`
+- `UI_PORT` (default `4200`) – Host-Port für die Angular UI
+- `API_PORT` (default `8091`) – Host-Port für nginx/API
+- `BASE_URL` (default `http://localhost:${UI_PORT}`)
+- `API_DOC_URL` (default `http://localhost:${API_PORT}/api/documentation`)
+- `HEADLESS` (default `true` in CI) – lokal z.B. `export HEADLESS=false`
+- `DEMO_EMAIL`, `DEMO_PASSWORD` – Demo Credentials (falls Tests Login nutzen)
 
-Beispiele:
+Beispiel:
 ```bash
-robot --include smoke ui-tests
-robot --include regression ui-tests
+SPRINT=sprint5 API_PORT=18091 UI_PORT=4200 bash Scripts/run_all.sh
 ```
 
 ---
 
-## Reports & Artefakte
+## GitHub Actions CI
 
-Robot erzeugt pro Run:
-- `output.xml` (maschinenlesbar)
-- `log.html` (Details, Step-by-step, Keywords, Timing)
-- `report.html` (Zusammenfassung)
+Workflow: `.github/workflows/ci-ui-tests.yml`
 
-Zusätzlich erstellen wir Screenshots bei Failures:
-- `.../screenshots/*.png`
+- Startet Docker Compose
+- Wartet auf DB + seeded
+- **Smoke** als Quality Gate
+- Nur wenn Smoke grün ist: **Regression**
+- Lädt Robot Artefakte hoch (Smoke + Regression)
 
-Lokal liegen die Artefakte unter:
-- `artifacts_local/smoke/`
-- `artifacts_local/regression/`
-
-In GitHub Actions werden die Artefakte als Artifacts hochgeladen:
-- `robot-artifacts-smoke`
-- `robot-artifacts-regression`
+Hinweis: In CI wird `API_PORT=18091` genutzt, um Port-Kollisionen auf Shared Runnern zu vermeiden.
 
 ---
 
-## CI Pipeline (GitHub Actions)
+## Wichtige Pfade
 
-### Trigger
-- Läuft bei **push** und **pull_request** auf `main`
-- Kein nightly / keine schedules
-
-### Ablauf (Smoke als QGate, danach Regression)
-```
-push/PR
-  │
-  ├─ Job: smoke (QGate)
-  │    ├─ docker compose up
-  │    ├─ wait API
-  │    ├─ wait DB
-  │    ├─ migrate:fresh --seed
-  │    ├─ verify seed (products > 0)
-  │    ├─ rfbrowser init
-  │    ├─ robot --include smoke   ✅/❌ (Gate)
-  │    └─ upload artifacts (always)
-  │
-  └─ Job: regression (nur wenn smoke grün)
-       ├─ docker compose up
-       ├─ wait API/DB
-       ├─ migrate:fresh --seed
-       ├─ rfbrowser init
-       ├─ robot --include regression ✅/❌ (Bug => rot)
-       └─ upload artifacts (always)
-```
-
-Warum seeden wir in beiden Jobs?
-- Jobs laufen auf separaten Runnern. Für deterministische Tests wird pro Job ein frischer Zustand aufgebaut.
+- `docker/docker-compose.yml` – App Stack (ohne cron)
+- `docker/nginx/default.conf` – nginx FastCGI Proxy Config
+- `Scripts/run_all.sh` – lokal: up -> wait -> seed -> smoke -> regression (optional cleanup)
+- `ui-tests/` – Robot Suites (Smoke/Regression)
+- `artifacts_local/` – lokale Robot Reports
+- `artifacts/` – CI Robot Reports (GitHub Artifacts)
 
 ---
 
 ## Troubleshooting
 
-### “Connection refused” beim Seed
-Symptom:
-- `SQLSTATE[HY000] [2002] Connection refused`
+### API/UI nicht erreichbar
+- `docker compose -f docker/docker-compose.yml ps`
+- `docker compose -f docker/docker-compose.yml logs --no-color --tail=200`
 
-Ursache:
-- DB ist noch nicht bereit. Lösung: DB-ready wait (Makefile/Script macht das automatisch).
+### Seed Probleme / keine Produkte
+- `docker compose -f docker/docker-compose.yml exec -T laravel-api php artisan tinker --execute="echo \App\Models\Product::count();"`
 
-### “products table doesn’t exist”
-Symptom:
-- `Table '...products' doesn't exist`
-
-Lösung:
-- `php artisan migrate:fresh --seed` muss erfolgreich durchlaufen.
-- Verify:
-```bash
-docker compose --env-file docker/.env -f docker/docker-compose.yml exec -T laravel-api \
-  php artisan tinker --execute="echo \\App\\Models\\Product::count();"
-```
-
-### Apple Silicon: amd64 Images
-Warnung:
-- `requested image's platform (linux/amd64) does not match host (linux/arm64)`
-
-Das läuft über Emulation und kann langsamer starten -> Readiness-Waits sind wichtig.
+### Ports belegt
+- lokal Ports ändern:
+  ```bash
+  API_PORT=18091 UI_PORT=4201 docker compose -f docker/docker-compose.yml up -d
+  ```
 
 ---
 
-## Makefile Targets (Cheatsheet)
+## Lizenz / Hinweis
 
-```bash
-make up           # docker compose up -d
-make down         # docker compose down
-make clean        # docker compose down -v
-make seed         # wait-api + wait-db + migrate:fresh --seed + verify
-make smoke        # robot --include smoke
-make regression   # robot --include regression
-make test-all     # up -> seed -> smoke -> regression
-make logs         # tail logs
-make ps           # docker compose ps
-```
-
----
-
-## FAQ
-
-### “Warum nicht direkt gegen practicesoftwaretesting.com testen?”
-Öffentliche Seiten haben oft Bot-Schutz/Rate-Limits. Für deterministische CI testen wir gegen einen kontrollierten Docker-Stack mit Seed-Daten.
-
-### “Warum ist Regression rot?”
-Regression rot bedeutet: **Bug gefunden**. Das soll so sein. In CI wird das als Failure markiert.
-
----
-
-## Hinweis
-Privates Lern-/Demo-Projekt zur Testautomatisierung.
+Dieses Repo ist ein privates Lern-/Demo-Projekt. Die App-Images stammen von der Practice Software Testing Toolshop-Umgebung.
