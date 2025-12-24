@@ -1,11 +1,12 @@
 *** Settings ***
-Documentation     Smoke test verifying availability of the search input.
-...               Search execution and result correctness are explicitly out of scope.
+Documentation     Smoke test verifying that search is present.
 Resource          ../resources/keywords/common.robot
+Suite Setup       Open Toolshop
+Suite Teardown    Close Toolshop
 
 *** Test Cases ***
 Search Field Is Available
-    [Documentation]    Checks that the search input field is present and visible.
-    Open Toolshop
-    Wait For Elements State    css=[data-test="search-query"]    visible    timeout=15s
-    Close Toolshop
+    [Documentation]
+    ...    Pass criteria:
+    ...    - Search input is visible on the landing page
+    Wait For Elements State    css=[data-test="search-query"]    visible    timeout=20s

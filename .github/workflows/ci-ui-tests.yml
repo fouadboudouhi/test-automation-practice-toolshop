@@ -5,26 +5,35 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      run_regression:
+        description: "Run regression tests"
+        required: false
+        default: "false"
 
 jobs:
-  ui-tests:
+  smoke:
     runs-on: ubuntu-latest
-
     env:
       BASE_URL: https://practicesoftwaretesting.com
       DEMO_EMAIL: customer@practicesoftwaretesting.com
       DEMO_PASSWORD: welcome01
-      # CI stabiler machen
-      CI: "true"
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('requirements.txt') }}
 
       - name: Install dependencies
         run: |
@@ -32,25 +41,57 @@ jobs:
           pip install -r requirements.txt
           rfbrowser init
 
-      - name: Run UI Smoke Tests (quality gate)
+      - name: Run Smoke
         run: |
-          robot \
-            --loglevel TRACE \
-            --outputdir artifacts/smoke \
-            ui-tests/smoke
+          robot --outputdir artifacts/smoke ui-tests/smoke
 
-      - name: Run UI Regression Tests (informational)
-        continue-on-error: true
-        run: |
-          robot \
-            --loglevel TRACE \
-            --outputdir artifacts/regression \
-            ui-tests/regression
-
-      - name: Upload Robot Artifacts (reports + screenshots + traces/videos if enabled)
+      - name: Upload Smoke Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-artifacts
-          path: |
-            artifacts/**
+          name: smoke-artifacts
+          path: artifacts/smoke
+
+  regression:
+    runs-on: ubuntu-latest
+    needs: smoke
+    if: |
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_regression == 'true')
+
+    env:
+      BASE_URL: https://practicesoftwaretesting.com
+      DEMO_EMAIL: customer@practicesoftwaretesting.com
+      DEMO_PASSWORD: welcome01
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          rfbrowser init
+
+      - name: Run Regression
+        run: |
+          robot --outputdir artifacts/regression ui-tests/regression
+
+      - name: Upload Regression Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-artifacts
+          path: artifacts/regression

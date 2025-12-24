@@ -1,11 +1,17 @@
 *** Settings ***
 Documentation     Smoke test verifying that the homepage is reachable.
-...               This test only checks basic availability, not content correctness.
 Resource          ../resources/keywords/common.robot
+Suite Setup       Open Toolshop
+Suite Teardown    Close Toolshop
 
 *** Test Cases ***
 Homepage Is Reachable
-    [Documentation]    Verifies that the homepage loads without errors.
-    Open Toolshop
-    Get Title
-    Close Toolshop
+    [Documentation]
+    ...    Pass criteria:
+    ...    - Page body is visible
+    ...    - Top navbar is visible
+    ...    - Current URL starts with BASE_URL
+    Wait For Elements State    css=body          visible    timeout=20s
+    Wait For Elements State    css=nav.navbar    visible    timeout=20s
+    ${url}=    Get Url
+    Should Start With    ${url}    ${BASE_URL}
