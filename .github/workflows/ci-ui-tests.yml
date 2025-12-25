@@ -11,30 +11,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ui-tests:
+  smoke:
+    name: Smoke (QGate)
     runs-on: ubuntu-latest
-    name: Smoke -> Regression (QGate)
 
     env:
+      BASE_URL: http://localhost:4200
+      API_DOC_URL: http://localhost:8091/api/documentation
+
+      API_SERVICE: laravel-api
+      DB_SERVICE: mariadb
+      SEED_CMD: php artisan migrate:fresh --seed
+
       COMPOSE_FILE: docker/docker-compose.yml
       COMPOSE_PROJECT_NAME: ui-${{ github.run_id }}-${{ github.run_attempt }}
-
-      # Avoid port collisions on shared runners
-      API_PORT: "18091"
-      UI_PORT: "4200"
-
-      API_DOC_URL: http://localhost:18091/api/documentation
-      BASE_URL: http://localhost:4200
 
       HEADLESS: "true"
       DEMO_EMAIL: customer@practicesoftwaretesting.com
       DEMO_PASSWORD: welcome01
 
-      SEED_CMD: php artisan migrate:fresh --seed
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # WICHTIG: Wenn deine Images ARM64-only sind, brauchst du QEMU.
+      # Wenn du sicher bist, dass es AMD64 Images gibt, kannst du diese beiden Steps entfernen.
+      - name: Enable QEMU (for ARM images on amd64 runner)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Force Docker platform (ARM64)
+        shell: bash
+        run: |
+          echo "DOCKER_DEFAULT_PLATFORM=linux/arm64" >> "$GITHUB_ENV"
 
       - name: Start docker stack
         shell: bash
@@ -43,13 +53,29 @@ jobs:
           docker compose -f "${COMPOSE_FILE}" up -d --pull missing
           docker compose -f "${COMPOSE_FILE}" ps
 
-      - name: Wait for DB (mariadb)
+      - name: Wait for API docs endpoint
         shell: bash
         run: |
           set -euo pipefail
-          echo "Waiting for DB..."
-          for i in {1..90}; do
-            if docker compose -f "${COMPOSE_FILE}" exec -T mariadb \
+          echo "Waiting for API docs on ${API_DOC_URL} ..."
+          for i in {1..180}; do
+            if curl -fsS "${API_DOC_URL}" >/dev/null 2>&1; then
+              echo "API docs reachable ✅"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API docs not reachable ❌"
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
+          exit 1
+
+      - name: Wait for DB to accept connections
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Waiting for DB (${DB_SERVICE}) ..."
+          for i in {1..120}; do
+            if docker compose -f "${COMPOSE_FILE}" exec -T "${DB_SERVICE}" \
               sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
               echo "DB ready ✅"
               exit 0
@@ -57,62 +83,38 @@ jobs:
             sleep 2
           done
           echo "DB not ready ❌"
-          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
           exit 1
 
-      - name: Migrate + seed (retry)
+      - name: Migrate + seed database
         shell: bash
         run: |
           set -euo pipefail
-          echo "Seeding with retries..."
-          for i in {1..20}; do
-            if docker compose -f "${COMPOSE_FILE}" exec -T laravel-api ${SEED_CMD}; then
-              echo "Seed OK ✅"
-              exit 0
-            fi
-            echo "Seed failed (attempt $i) - retrying in 3s..."
-            sleep 3
-          done
-          echo "Seed failed permanently ❌"
-          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
-          exit 1
+          echo "Seeding in ${API_SERVICE}: ${SEED_CMD}"
+          docker compose -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" ${SEED_CMD}
 
-      - name: Verify seed (products must exist)
+      - name: Verify seed (product count > 0)
         shell: bash
         run: |
           set -euo pipefail
-          OUT="$(docker compose -f "${COMPOSE_FILE}" exec -T laravel-api \
+          OUT="$(docker compose -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" \
             php artisan tinker --execute="echo \App\Models\Product::count();" || true)"
           COUNT="$(echo "${OUT}" | tr -dc '0-9' || true)"
           echo "Product count: ${COUNT}"
           if [[ -z "${COUNT}" || "${COUNT}" -le 0 ]]; then
             echo "Seed verification failed ❌"
             echo "${OUT}"
+            docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
             exit 1
           fi
-
-      - name: Wait for API via nginx (API_DOC_URL)
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Waiting for API on ${API_DOC_URL} ..."
-          for i in {1..120}; do
-            if curl -fsS "${API_DOC_URL}" >/dev/null 2>&1; then
-              echo "API reachable ✅"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "API not reachable ❌"
-          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
-          exit 1
+          echo "Seed verification OK ✅"
 
       - name: Wait for UI
         shell: bash
         run: |
           set -euo pipefail
           echo "Waiting for UI on ${BASE_URL} ..."
-          for i in {1..120}; do
+          for i in {1..180}; do
             if curl -fsS "${BASE_URL}" >/dev/null 2>&1; then
               echo "UI reachable ✅"
               exit 0
@@ -120,7 +122,7 @@ jobs:
             sleep 2
           done
           echo "UI not reachable ❌"
-          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 300
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
           exit 1
 
       - name: Set up Python
@@ -136,19 +138,13 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ hashFiles('requirements.txt') }}
 
       - name: Install deps + init Browser
-        shell: bash
         run: |
-          set -euo pipefail
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           rfbrowser init
 
       - name: Run Smoke (QGate)
-        id: smoke
-        continue-on-error: true
-        shell: bash
         run: |
-          set -euo pipefail
           robot --outputdir artifacts/smoke --include smoke ui-tests
 
       - name: Upload Smoke artifacts
@@ -158,19 +154,116 @@ jobs:
           name: robot-artifacts-smoke
           path: artifacts/smoke
 
-      - name: Fail fast if Smoke failed
-        if: steps.smoke.outcome != 'success'
+      - name: Docker logs (always)
+        if: always()
         shell: bash
         run: |
-          echo "Smoke failed -> stop."
-          exit 1
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
 
-      - name: Run Regression
-        id: regression
-        continue-on-error: true
+      - name: Stop docker stack
+        if: always()
+        shell: bash
+        run: |
+          docker compose -f "${COMPOSE_FILE}" down -v --remove-orphans
+
+  regression:
+    name: Regression
+    runs-on: ubuntu-latest
+    needs: smoke
+    if: needs.smoke.result == 'success'
+
+    env:
+      BASE_URL: http://localhost:4200
+      API_DOC_URL: http://localhost:8091/api/documentation
+
+      API_SERVICE: laravel-api
+      DB_SERVICE: mariadb
+      SEED_CMD: php artisan migrate:fresh --seed
+
+      COMPOSE_FILE: docker/docker-compose.yml
+      COMPOSE_PROJECT_NAME: ui-${{ github.run_id }}-${{ github.run_attempt }}-reg
+
+      HEADLESS: "true"
+      DEMO_EMAIL: customer@practicesoftwaretesting.com
+      DEMO_PASSWORD: welcome01
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable QEMU (for ARM images on amd64 runner)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Force Docker platform (ARM64)
+        shell: bash
+        run: |
+          echo "DOCKER_DEFAULT_PLATFORM=linux/arm64" >> "$GITHUB_ENV"
+
+      - name: Start docker stack
         shell: bash
         run: |
           set -euo pipefail
+          docker compose -f "${COMPOSE_FILE}" up -d --pull missing
+          docker compose -f "${COMPOSE_FILE}" ps
+
+      - name: Wait for API + DB + seed
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Waiting for API docs on ${API_DOC_URL} ..."
+          for i in {1..180}; do
+            curl -fsS "${API_DOC_URL}" >/dev/null 2>&1 && break
+            sleep 2
+          done
+
+          echo "Waiting for DB (${DB_SERVICE}) ..."
+          for i in {1..120}; do
+            if docker compose -f "${COMPOSE_FILE}" exec -T "${DB_SERVICE}" \
+              sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+
+          echo "Seeding in ${API_SERVICE}: ${SEED_CMD}"
+          docker compose -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" ${SEED_CMD}
+
+          OUT="$(docker compose -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" \
+            php artisan tinker --execute="echo \App\Models\Product::count();" || true)"
+          COUNT="$(echo "${OUT}" | tr -dc '0-9' || true)"
+          echo "Product count: ${COUNT}"
+          [[ -n "${COUNT}" && "${COUNT}" -gt 0 ]]
+
+          echo "Waiting for UI on ${BASE_URL} ..."
+          for i in {1..180}; do
+            curl -fsS "${BASE_URL}" >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          exit 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('requirements.txt') }}
+
+      - name: Install deps + init Browser
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          rfbrowser init
+
+      - name: Run Regression
+        run: |
           robot --outputdir artifacts/regression --include regression ui-tests
 
       - name: Upload Regression artifacts
@@ -180,22 +273,14 @@ jobs:
           name: robot-artifacts-regression
           path: artifacts/regression
 
-      - name: Fail if Regression failed
-        if: steps.regression.outcome != 'success'
+      - name: Docker logs (always)
+        if: always()
         shell: bash
         run: |
-          echo "Regression failed -> workflow fails (bug)."
-          exit 1
-
-      - name: Docker logs (on failure)
-        if: failure()
-        shell: bash
-        run: |
-          docker compose -f "${COMPOSE_FILE}" ps || true
-          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500 || true
+          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
 
       - name: Stop docker stack
         if: always()
         shell: bash
         run: |
-          docker compose -f "${COMPOSE_FILE}" down -v || true
+          docker compose -f "${COMPOSE_FILE}" down -v --remove-orphans
