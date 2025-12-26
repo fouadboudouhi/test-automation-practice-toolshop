@@ -1,6 +1,8 @@
 *** Settings ***
 Documentation     Regression: first product card image src is not empty.
 Resource          ../../resources/keywords/common.robot
+Test Setup       Open Toolshop
+Test Teardown    Close Toolshop
 Suite Setup       Open Toolshop
 
 *** Test Cases ***

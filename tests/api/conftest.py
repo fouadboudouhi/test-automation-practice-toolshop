@@ -1,7 +1,5 @@
 import os
 import re
-import time
-from urllib.parse import urljoin
 
 import pytest
 import requests
@@ -44,7 +42,7 @@ def _first_identifier(items):
             continue
         for k in ("id", "uuid", "ulid", "slug", "code"):
             v = it.get(k)
-            if isinstance(v, (str, int)) and str(v).strip():
+            if isinstance(v, str | int) and str(v).strip():
                 return str(v).strip()
     return None
 
@@ -127,7 +125,9 @@ def openapi_spec(http: requests.Session, openapi_spec_url: str) -> dict:
     r.raise_for_status()
     spec = r.json()
     if not isinstance(spec, dict) or "paths" not in spec:
-        raise RuntimeError("OpenAPI spec JSON did not look like an OpenAPI document (missing 'paths').")
+        raise RuntimeError(
+            "OpenAPI spec JSON did not look like an OpenAPI document (missing 'paths')."
+        )
     return spec
 
 
@@ -225,11 +225,13 @@ def sample_product_identifier(
     candidates = []
     for k in ("id", "slug", "uuid", "ulid", "code"):
         v = sample_product.get(k)
-        if isinstance(v, (str, int)) and str(v).strip():
+        if isinstance(v, str | int) and str(v).strip():
             candidates.append(str(v).strip())
 
     if not candidates:
-        pytest.skip(f"Sample product had no usable identifier fields: keys={list(sample_product.keys())}")
+        pytest.skip(
+            f"Sample product had no usable identifier fields: keys={list(sample_product.keys())}"
+        )
 
     for cand in candidates:
         path = _replace_first_path_param(product_details_path, cand)
@@ -248,8 +250,12 @@ def sample_product_identifier(
 
 
 @pytest.fixture(scope="session")
-def sample_product_details_url(api_base_url: str, product_details_path: str, sample_product_identifier: str) -> str:
-    return _absolute(api_base_url, _replace_first_path_param(product_details_path, sample_product_identifier))
+def sample_product_details_url(
+    api_base_url: str, product_details_path: str, sample_product_identifier: str
+) -> str:
+    return _absolute(
+        api_base_url, _replace_first_path_param(product_details_path, sample_product_identifier)
+    )
 
 
 @pytest.fixture(scope="session")

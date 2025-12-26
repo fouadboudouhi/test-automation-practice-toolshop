@@ -1,6 +1,8 @@
 *** Settings ***
 Documentation     Regression: apply and clear brand filter; list should still show results.
 Resource          ../../resources/keywords/common.robot
+Test Setup       Open Toolshop
+Test Teardown    Close Toolshop
 Suite Setup       Open Toolshop
 
 *** Test Cases ***

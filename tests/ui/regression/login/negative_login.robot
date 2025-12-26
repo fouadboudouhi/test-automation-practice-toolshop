@@ -2,11 +2,12 @@
 Documentation     Regression test for invalid login handling.
 ...               Verifies that an error message is shown for invalid credentials.
 Resource          ../../resources/keywords/common.robot
+Test Setup       Open Toolshop
+Test Teardown    Close Toolshop
 
 *** Test Cases ***
 Login With Invalid Credentials
     [Tags]    regression
-    Open Toolshop
 
     Click    css=[data-test="nav-sign-in"]
 
@@ -16,5 +17,3 @@ Login With Invalid Credentials
 
     # Regression-level assertion: error feedback is shown
     Wait For Elements State    css=.alert-danger    visible    timeout=10s
-
-    Close Toolshop

@@ -48,14 +48,18 @@ def test_openapi_has_info(openapi):
 
 
 @pytest.mark.regression
-def test_products_list_returns_json_200(http: requests.Session, api_base_url: str, products_list_path: str):
+def test_products_list_returns_json_200(
+    http: requests.Session, api_base_url: str, products_list_path: str
+):
     r = http.get(_absolute(api_base_url, products_list_path), timeout=30)
     assert r.status_code == 200
     assert "json" in (r.headers.get("content-type", "").lower())
 
 
 @pytest.mark.regression
-def test_products_list_has_minimum_fields(http: requests.Session, api_base_url: str, products_list_path: str):
+def test_products_list_has_minimum_fields(
+    http: requests.Session, api_base_url: str, products_list_path: str
+):
     r = http.get(_absolute(api_base_url, products_list_path), timeout=30)
     assert r.status_code == 200
     items = _unwrap_items(r.json())
@@ -88,7 +92,9 @@ def test_product_details_endpoint_returns_same_identifier(
 
 
 @pytest.mark.regression
-def test_categories_list_returns_200(http: requests.Session, api_base_url: str, categories_list_path: str):
+def test_categories_list_returns_200(
+    http: requests.Session, api_base_url: str, categories_list_path: str
+):
     r = http.get(_absolute(api_base_url, categories_list_path), timeout=30)
     assert r.status_code == 200
 
@@ -110,7 +116,11 @@ def test_products_filter_by_category_if_supported(
     cat_param = _find_query_param(openapi_paths, products_list_path, "category")
     if not cat_param:
         pytest.skip("No category query parameter described for products list")
-    url = _absolute(api_base_url, products_list_path) + "?" + urlencode({cat_param: sample_category_id})
+    url = (
+        _absolute(api_base_url, products_list_path)
+        + "?"
+        + urlencode({cat_param: sample_category_id})
+    )
     r = http.get(url, timeout=30)
     assert r.status_code == 200
 
@@ -126,13 +136,19 @@ def test_products_filter_by_brand_if_supported(
     brand_param = _find_query_param(openapi_paths, products_list_path, "brand")
     if not brand_param:
         pytest.skip("No brand query parameter described for products list")
-    url = _absolute(api_base_url, products_list_path) + "?" + urlencode({brand_param: sample_brand_id})
+    url = (
+        _absolute(api_base_url, products_list_path)
+        + "?"
+        + urlencode({brand_param: sample_brand_id})
+    )
     r = http.get(url, timeout=30)
     assert r.status_code == 200
 
 
 @pytest.mark.regression
-def test_products_pagination_page_2_if_supported(http: requests.Session, api_base_url: str, products_list_path: str, openapi_paths: dict):
+def test_products_pagination_page_2_if_supported(
+    http: requests.Session, api_base_url: str, products_list_path: str, openapi_paths: dict
+):
     page_param = _find_query_param(openapi_paths, products_list_path, "page")
     if not page_param:
         pytest.skip("No page parameter described for products list")
@@ -142,7 +158,9 @@ def test_products_pagination_page_2_if_supported(http: requests.Session, api_bas
 
 
 @pytest.mark.regression
-def test_products_sorting_if_supported(http: requests.Session, api_base_url: str, products_list_path: str, openapi_paths: dict):
+def test_products_sorting_if_supported(
+    http: requests.Session, api_base_url: str, products_list_path: str, openapi_paths: dict
+):
     sort_param = _find_query_param(openapi_paths, products_list_path, "sort")
     if not sort_param:
         pytest.skip("No sort parameter described for products list")
@@ -153,7 +171,9 @@ def test_products_sorting_if_supported(http: requests.Session, api_base_url: str
 
     # If server crashes (5xx), that's an AUT bug or unsupported sort -> don't break your pipeline
     if r.status_code >= 500:
-        pytest.xfail("API returns 5xx for sort=price-asc (likely AUT bug or unsupported sort value).")
+        pytest.xfail(
+            "API returns 5xx for sort=price-asc (likely AUT bug or unsupported sort value)."
+        )
 
     # Some APIs ignore unknown sorts and still return 200; some validate and return 4xx
     assert r.status_code in (200, 400, 422)
@@ -166,7 +186,11 @@ def test_products_endpoint_invalid_sort_does_not_crash_if_supported(
     sort_param = _find_query_param(openapi_paths, products_list_path, "sort")
     if not sort_param:
         pytest.skip("No sort parameter described")
-    url = _absolute(api_base_url, products_list_path) + "?" + urlencode({sort_param: "this_is_not_a_real_sort"})
+    url = (
+        _absolute(api_base_url, products_list_path)
+        + "?"
+        + urlencode({sort_param: "this_is_not_a_real_sort"})
+    )
     r = http.get(url, timeout=30)
 
     if r.status_code >= 500:
@@ -181,7 +205,9 @@ def test_login_returns_token(auth_token: str):
 
 
 @pytest.mark.regression
-def test_me_endpoint_requires_auth_if_present(http: requests.Session, api_base_url: str, openapi_paths: dict, auth_token: str):
+def test_me_endpoint_requires_auth_if_present(
+    http: requests.Session, api_base_url: str, openapi_paths: dict, auth_token: str
+):
     me_path = None
     for p, ops in (openapi_paths or {}).items():
         if not isinstance(ops, dict) or "get" not in ops:
@@ -205,7 +231,9 @@ def test_me_endpoint_requires_auth_if_present(http: requests.Session, api_base_u
 
 
 @pytest.mark.regression
-def test_invoices_list_requires_auth_if_present(http: requests.Session, api_base_url: str, openapi_paths: dict, auth_token: str):
+def test_invoices_list_requires_auth_if_present(
+    http: requests.Session, api_base_url: str, openapi_paths: dict, auth_token: str
+):
     inv_path = None
     for p, ops in (openapi_paths or {}).items():
         if not isinstance(ops, dict) or "get" not in ops:
@@ -229,7 +257,9 @@ def test_invoices_list_requires_auth_if_present(http: requests.Session, api_base
 
 
 @pytest.mark.regression
-def test_favorites_list_requires_auth_if_present(http: requests.Session, api_base_url: str, openapi_paths: dict, auth_token: str):
+def test_favorites_list_requires_auth_if_present(
+    http: requests.Session, api_base_url: str, openapi_paths: dict, auth_token: str
+):
     fav_path = None
     for p, ops in (openapi_paths or {}).items():
         if not isinstance(ops, dict) or "get" not in ops:
@@ -253,7 +283,9 @@ def test_favorites_list_requires_auth_if_present(http: requests.Session, api_bas
 
 
 @pytest.mark.regression
-def test_cart_get_requires_auth_if_present(http: requests.Session, api_base_url: str, openapi_paths: dict, auth_token: str):
+def test_cart_get_requires_auth_if_present(
+    http: requests.Session, api_base_url: str, openapi_paths: dict, auth_token: str
+):
     cart_path = None
     for p, ops in (openapi_paths or {}).items():
         if not isinstance(ops, dict):
@@ -278,7 +310,9 @@ def test_cart_get_requires_auth_if_present(http: requests.Session, api_base_url:
 
 
 @pytest.mark.regression
-def test_products_endpoint_response_time_is_reasonable(http: requests.Session, api_base_url: str, products_list_path: str):
+def test_products_endpoint_response_time_is_reasonable(
+    http: requests.Session, api_base_url: str, products_list_path: str
+):
     start = time.time()
     r = http.get(_absolute(api_base_url, products_list_path), timeout=30)
     elapsed = time.time() - start

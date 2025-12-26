@@ -14,7 +14,11 @@ DB_SERVICE   ?= mariadb
 
 # Web reverse proxy (API docs live behind this)
 WEB_PORT     ?= 8091
-API_DOC_URL  ?= http://localhost:$(WEB_PORT)/api/documentation
+API_HOST     ?= http://localhost:$(WEB_PORT)
+API_DOCS_URL ?= $(API_HOST)/api/documentation
+# Backwards compatible alias (deprecated)
+API_DOC_URL  ?= $(API_DOCS_URL)
+
 
 # UI
 UI_PORT      ?= 4200
@@ -23,7 +27,7 @@ BASE_URL     ?= http://localhost:$(UI_PORT)
 SEED_CMD     ?= php artisan migrate:fresh --seed
 
 # Robot
-TEST_ROOT    ?= ui-tests
+TEST_ROOT    ?= tests/ui
 SMOKE_TAG    ?= smoke
 REG_TAG      ?= regression
 HEADLESS     ?= true
@@ -33,6 +37,8 @@ ARTIFACTS    ?= artifacts
 UI_ARTIFACTS ?= $(ARTIFACTS)/ui
 API_ARTIFACTS?= $(ARTIFACTS)/api
 
+# Pytest
+API_TEST_ROOT ?= tests/api
 # Compose command (supports optional override file)
 COMPOSE_FILES := -f $(COMPOSE_FILE)
 ifneq ($(strip $(COMPOSE_OVERRIDE)),)
@@ -65,7 +71,7 @@ help:
 up:
 	$(DC) up -d --pull missing
 	$(DC) ps
-	@echo "Web/API docs: $(API_DOC_URL)"
+	@echo "Web/API docs: $(API_DOCS_URL)"
 	@echo "UI:          $(BASE_URL)"
 
 down:
@@ -81,9 +87,9 @@ logs:
 	$(DC) logs --no-color --tail=200
 
 wait-api:
-	@echo "Waiting for API $(API_DOC_URL) ..."
+	@echo "Waiting for API $(API_DOCS_URL) ..."
 	@for i in {1..180}; do \
-		curl -fsS "$(API_DOC_URL)" >/dev/null 2>&1 && echo "API reachable" && exit 0; \
+		curl -fsS "$(API_DOCS_URL)" >/dev/null 2>&1 && echo "API reachable" && exit 0; \
 		sleep 2; \
 	done; \
 	echo "API not reachable"; \
@@ -139,9 +145,19 @@ ui-regression: rfbrowser-init wait-ui
 	BASE_URL="$(BASE_URL)" HEADLESS="$(HEADLESS)" \
 	robot --outputdir "$(UI_ARTIFACTS)/regression" --include "$(REG_TAG)" "$(TEST_ROOT)"
 
-# If you also have API targets in your repo, you can wire them here.
-# For now we keep "smoke/regression" mapped to UI, because that’s what you run most often.
-smoke: ui-smoke
-regression: ui-regression
+# API targets
+api-smoke: wait-api
+	@mkdir -p "$(API_ARTIFACTS)/smoke"
+	API_HOST="$(API_HOST)" API_DOCS_URL="$(API_DOCS_URL)" \
+	pytest -q -m "smoke" --junitxml="$(API_ARTIFACTS)/smoke/junit.xml" "$(API_TEST_ROOT)"
+
+api-regression: wait-api
+	@mkdir -p "$(API_ARTIFACTS)/regression"
+	API_HOST="$(API_HOST)" API_DOCS_URL="$(API_DOCS_URL)" \
+	pytest -q -m "regression" --junitxml="$(API_ARTIFACTS)/regression/junit.xml" "$(API_TEST_ROOT)"
+
+# Combined entry points
+smoke: api-smoke ui-smoke
+regression: api-regression ui-regression
 
 test-all: up seed smoke regression

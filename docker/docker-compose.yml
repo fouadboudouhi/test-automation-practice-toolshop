@@ -1,7 +1,6 @@
 services:
   mariadb:
     image: yobasystems/alpine-mariadb:10.6.11
-    # WICHTIG: Kein Host-Port-Mapping -> vermeidet "Bind for 0.0.0.0:3306 failed"
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_USER: user
@@ -35,7 +34,6 @@ services:
     ports:
       - "${WEB_PORT:-8091}:80"
     volumes:
-      # compose file liegt in docker/ -> ./nginx/default.conf ist korrekt
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - laravel-app-code:/var/www:ro
 

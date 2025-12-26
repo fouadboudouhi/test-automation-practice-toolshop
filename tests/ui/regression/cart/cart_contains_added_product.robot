@@ -1,6 +1,8 @@
 *** Settings ***
 Documentation     Regression: add product to cart and verify it is shown in cart.
 Resource          ../../resources/keywords/common.robot
+Test Setup       Open Toolshop
+Test Teardown    Close Toolshop
 Library           String
 Suite Setup       Open Toolshop
 

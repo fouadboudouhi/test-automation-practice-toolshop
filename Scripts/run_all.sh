@@ -8,10 +8,13 @@ cd "${REPO_ROOT}"
 
 # --- config (override via env) ---
 UI_PORT="${UI_PORT:-4200}"
-API_PORT="${API_PORT:-8091}"
+WEB_PORT="${WEB_PORT:-${API_PORT:-8091}}"
 
 BASE_URL="${BASE_URL:-http://localhost:${UI_PORT}}"
-API_DOC_URL="${API_DOC_URL:-http://localhost:${API_PORT}/api/documentation}"
+API_HOST="${API_HOST:-http://localhost:${WEB_PORT}}"
+API_DOCS_URL="${API_DOCS_URL:-${API_HOST}/api/documentation}"
+# Backwards compatible alias (deprecated)
+API_DOC_URL="${API_DOC_URL:-${API_DOCS_URL}}"
 
 COMPOSE_FILE="${COMPOSE_FILE:-docker/docker-compose.yml}"
 
@@ -26,7 +29,7 @@ DB_READY_CMD="${DB_READY_CMD:-mysqladmin ping -h 127.0.0.1 -uroot -p\"\$MYSQL_RO
 SEED_CMD="${SEED_CMD:-php artisan migrate:fresh --seed}"
 
 # Robot
-TEST_ROOT="${TEST_ROOT:-ui-tests}"
+TEST_ROOT="${TEST_ROOT:-tests/ui}"
 SMOKE_TAG="${SMOKE_TAG:-smoke}"
 REGRESSION_TAG="${REGRESSION_TAG:-regression}"
 
@@ -39,7 +42,7 @@ CLEANUP="${CLEANUP:-false}"  # set CLEANUP=true to auto down -v at end
 
 echo "==> Repo root:          ${REPO_ROOT}"
 echo "==> BASE_URL:           ${BASE_URL}"
-echo "==> API_DOC_URL:        ${API_DOC_URL}"
+echo "==> API_DOCS_URL:      ${API_DOCS_URL}"
 echo "==> Compose file:       ${COMPOSE_FILE}"
 echo "==> API service:        ${API_SERVICE}"
 echo "==> DB service:         ${DB_SERVICE}"
@@ -157,7 +160,7 @@ dc up -d --pull missing
 dc ps
 
 # --- wait for API ---
-if ! wait_for_url "${API_DOC_URL}" "API" 120 2; then
+if ! wait_for_url "${API_DOCS_URL}" "API" 120 2; then
   echo "==> API not reachable. Debug logs:"
   print_debug_logs
   exit 1

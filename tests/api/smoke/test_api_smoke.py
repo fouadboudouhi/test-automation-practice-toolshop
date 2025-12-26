@@ -1,6 +1,7 @@
+from urllib.parse import urlencode
+
 import pytest
 import requests
-from urllib.parse import urlencode
 
 
 def _absolute(base: str, path: str) -> str:
@@ -46,14 +47,18 @@ def test_openapi_spec_is_loadable(openapi_spec: dict):
 
 
 @pytest.mark.smoke
-def test_products_list_returns_200(http: requests.Session, api_base_url: str, products_list_path: str):
+def test_products_list_returns_200(
+    http: requests.Session, api_base_url: str, products_list_path: str
+):
     r = http.get(_absolute(api_base_url, products_list_path), timeout=30)
     assert r.status_code == 200
     assert "json" in (r.headers.get("content-type", "").lower())
 
 
 @pytest.mark.smoke
-def test_products_list_is_not_empty(http: requests.Session, api_base_url: str, products_list_path: str):
+def test_products_list_is_not_empty(
+    http: requests.Session, api_base_url: str, products_list_path: str
+):
     r = http.get(_absolute(api_base_url, products_list_path), timeout=30)
     assert r.status_code == 200
     items = _unwrap_list_payload(r.json())
@@ -68,11 +73,13 @@ def test_product_details_for_first_item(http: requests.Session, sample_product_d
     assert r.status_code == 200
     assert "json" in (r.headers.get("content-type", "").lower())
     data = r.json()
-    assert isinstance(data, (dict, list))
+    assert isinstance(data, dict | list)
 
 
 @pytest.mark.smoke
-def test_categories_list_returns_200(http: requests.Session, api_base_url: str, categories_list_path: str):
+def test_categories_list_returns_200(
+    http: requests.Session, api_base_url: str, categories_list_path: str
+):
     r = http.get(_absolute(api_base_url, categories_list_path), timeout=30)
     assert r.status_code == 200
 
@@ -90,8 +97,8 @@ def test_products_endpoint_supports_pagination_if_described(
     products_list_path: str,
     openapi_paths: dict,
 ):
-    ops = (openapi_paths.get(products_list_path) or {})
-    get_op = (ops.get("get") or {})
+    ops = openapi_paths.get(products_list_path) or {}
+    get_op = ops.get("get") or {}
     params = get_op.get("parameters") or []
 
     page_param = None
@@ -118,8 +125,8 @@ def test_filter_products_by_category_param_if_supported(
     sample_product: dict,
 ):
     # We try to discover a category filter parameter from OpenAPI.
-    ops = (openapi_paths.get(products_list_path) or {})
-    get_op = (ops.get("get") or {})
+    ops = openapi_paths.get(products_list_path) or {}
+    get_op = ops.get("get") or {}
     params = get_op.get("parameters") or []
 
     cat_param = None
@@ -130,7 +137,9 @@ def test_filter_products_by_category_param_if_supported(
             break
 
     if not cat_param:
-        pytest.skip("No category filter parameter described for products list endpoint in OpenAPI spec")
+        pytest.skip(
+            "No category filter parameter described for products list endpoint in OpenAPI spec"
+        )
 
     # Try to pick a category id/name from the sample product if present; otherwise skip.
     candidate = None
@@ -141,7 +150,9 @@ def test_filter_products_by_category_param_if_supported(
             break
 
     if not candidate:
-        pytest.skip("Sample product does not expose a category identifier; cannot test category filter safely")
+        pytest.skip(
+            "Sample product does not expose a category identifier; cannot test category filter safely"
+        )
 
     url = _absolute(api_base_url, products_list_path) + "?" + urlencode({cat_param: candidate})
     r = http.get(url, timeout=30)
@@ -156,8 +167,8 @@ def test_filter_products_by_brand_param_if_supported(
     openapi_paths: dict,
     sample_product: dict,
 ):
-    ops = (openapi_paths.get(products_list_path) or {})
-    get_op = (ops.get("get") or {})
+    ops = openapi_paths.get(products_list_path) or {}
+    get_op = ops.get("get") or {}
     params = get_op.get("parameters") or []
 
     brand_param = None
@@ -168,7 +179,9 @@ def test_filter_products_by_brand_param_if_supported(
             break
 
     if not brand_param:
-        pytest.skip("No brand filter parameter described for products list endpoint in OpenAPI spec")
+        pytest.skip(
+            "No brand filter parameter described for products list endpoint in OpenAPI spec"
+        )
 
     candidate = None
     for key in ("brand_id", "brandId", "brand", "brand_slug", "brandSlug"):
@@ -178,7 +191,9 @@ def test_filter_products_by_brand_param_if_supported(
             break
 
     if not candidate:
-        pytest.skip("Sample product does not expose a brand identifier; cannot test brand filter safely")
+        pytest.skip(
+            "Sample product does not expose a brand identifier; cannot test brand filter safely"
+        )
 
     url = _absolute(api_base_url, products_list_path) + "?" + urlencode({brand_param: candidate})
     r = http.get(url, timeout=30)

@@ -34,16 +34,16 @@ make test-all
 ## Folder structure
 
 ### UI tests
-- `ui-tests/`
-  - `ui-tests/resources/` — shared variables + keywords (single source of truth)
-  - `ui-tests/smoke/` — smoke suites
-  - `ui-tests/regression/` — regression suites (by feature area)
+- `tests/ui/`
+  - `tests/ui/resources/` — shared variables + keywords (single source of truth)
+  - `tests/ui/smoke/` — smoke suites
+  - `tests/ui/regression/` — regression suites (by feature area)
 
 ### API tests
-- `api-tests/`
-  - `api-tests/tests/smoke/`
-  - `api-tests/tests/regression/`
-  - `api-tests/conftest.py` — fixtures and shared helpers
+- `tests/api/`
+  - `tests/api/tests/smoke/`
+  - `tests/api/tests/regression/`
+  - `tests/api/conftest.py` — fixtures and shared helpers
 
 ---
 
@@ -82,4 +82,3 @@ make test-all
 
 ### API (Pytest)
 - `artifacts/api/<suite>/junit.xml`
-

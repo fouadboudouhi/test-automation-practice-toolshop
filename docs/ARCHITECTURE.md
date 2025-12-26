@@ -33,14 +33,14 @@ The UI and API are served behind a single predictable endpoint in local runs, an
 
 ### UI tests (Robot Framework)
 - Tooling: Robot Framework + `robotframework-browser` (Playwright)
-- Location: `ui-tests/`
+- Location: `tests/ui/`
 - Tagging:
   - `smoke` → fast checks used as a gate
   - `regression` → deeper coverage
 
 ### API tests (Pytest)
 - Tooling: Pytest + `requests`
-- Location: `api-tests/`
+- Location: `tests/api/`
 - Tagging:
   - `smoke` → fast endpoint sanity checks
   - `regression` → deeper contract-like checks driven by OpenAPI
@@ -62,4 +62,3 @@ Before UI/API tests run, the DB is migrated + seeded:
 - API: `junit.xml` for CI reporting
 
 Standard output location: `artifacts/`
-

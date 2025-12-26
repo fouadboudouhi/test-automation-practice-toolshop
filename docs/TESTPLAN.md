@@ -1,28 +1,28 @@
 # Testplan – Toolshop (Practice Software Testing)
 
-Version: 1.0  
-Stand: 2025-12-26  
+Version: 1.0
+Stand: 2025-12-26
 Gültig für: dieses Repository (Docker-Compose Stack + Robot Framework UI Tests + pytest API Tests)
 
 ---
 
 ## Inhaltsverzeichnis
 
-1. Ziel und Zweck  
-2. System under Test  
-3. Testziele  
-4. Scope  
-5. Teststrategie  
-6. Testarten und Abdeckung  
-7. Testdaten und Datenmanagement  
-8. Testumgebungen  
-9. Tooling und Infrastruktur  
-10. Testdurchführung  
-11. Entry-/Exit-Kriterien  
-12. Defect- und Incident-Management  
-13. Reporting und Metriken  
-14. Risiken und Gegenmaßnahmen  
-15. Wartung, Clean Code und Doku-Standards  
+1. Ziel und Zweck
+2. System under Test
+3. Testziele
+4. Scope
+5. Teststrategie
+6. Testarten und Abdeckung
+7. Testdaten und Datenmanagement
+8. Testumgebungen
+9. Tooling und Infrastruktur
+10. Testdurchführung
+11. Entry-/Exit-Kriterien
+12. Defect- und Incident-Management
+13. Reporting und Metriken
+14. Risiken und Gegenmaßnahmen
+15. Wartung, Clean Code und Doku-Standards
 16. Appendix: Test-Inventar (UI + API)
 
 ---
@@ -51,7 +51,7 @@ Der Plan ist so geschrieben, dass ein neuer Entwickler/Tester in kurzer Zeit:
 ### 2.2 Schnittstellen
 
 - UI: `BASE_URL` (z. B. `http://localhost:4200`)
-- API Doku: `API_DOC_URL` (z. B. `http://localhost:8091/api/documentation`)
+- API Doku: `API_HOST / API_DOCS_URL` (z. B. `http://localhost:8091/api/documentation`)
 - API Endpunkte (typisch): `/products`, `/brands`, `/categories`, `/users/login`, etc.
 
 ---
@@ -187,7 +187,7 @@ Wichtig: Wenn ein Test “optional” ist (Feature in Spec fehlt), wird **geskip
 
 ### 8.2 CI (GitHub Actions)
 - Ports werden in CI auf **random host ports** gemappt, um Konflikte zu vermeiden.
-- CI exportiert `BASE_URL` und `API_DOC_URL` dynamisch in `$GITHUB_ENV`.
+- CI exportiert `BASE_URL` und `API_DOCS_URL` dynamisch in `$GITHUB_ENV`.
 - Headless Standard: `HEADLESS=true`.
 
 ---
@@ -224,7 +224,7 @@ make test-all
 
 Wichtige ENV Overrides:
 - `BASE_URL`, `HEADLESS`
-- `API_DOC_URL`
+- `API_DOCS_URL`
 - `COMPOSE_FILE`
 - Ports: `UI_PORT`, `API_PORT` (wenn docker-compose das unterstützt)
 
@@ -240,7 +240,7 @@ Wichtige ENV Overrides:
 
 ### 11.1 Entry-Kriterien (bevor Tests starten)
 - Docker stack läuft (`docker compose ps`)
-- API Doku erreichbar (`API_DOC_URL`)
+- API Doku erreichbar (`API_DOCS_URL`)
 - DB ist healthy/reachable
 - Seed erfolgreich + Produktcount > 0
 - UI erreichbar (`BASE_URL`)
@@ -304,7 +304,7 @@ Wichtige ENV Overrides:
 ### 15.1 Testcode-Standards
 - **Keine sleeps** ohne Begründung; stattdessen State-based waits.
 - Keywords in Robot: sprechende Namen, single responsibility.
-- Wiederverwendung: gemeinsame Keywords in `ui-tests/resources/keywords/common.robot`.
+- Wiederverwendung: gemeinsame Keywords in `tests/ui/resources/keywords/common.robot`.
 
 ### 15.2 Dokumentations-Standards
 - README: Quickstart + Troubleshooting + Artefakte
@@ -350,7 +350,7 @@ Diese Sektion beschreibt **konkret**, was jeder automatisierte Test prüft. Sie 
 ### 17.1 API Smoke (pytest, Marker: `smoke`)
 | ID | Bereich | Tag | Datei/Test | Zweck | Haupt-Checks |
 |---|---|---|---|---|---|
-| API-SM-01 | API | smoke | api-tests/tests/smoke/test_api_smoke.py::test_swagger_ui_is_reachable | API-Doku erreichbar | GET API Docs liefert 200 + HTML Titel |
+| API-SM-01 | API | smoke | tests/api/tests/smoke/test_api_smoke.py::test_swagger_ui_is_reachable | API-Doku erreichbar | GET API Docs liefert 200 + HTML Titel |
 | API-SM-02 | API | smoke | ...::test_openapi_spec_is_loadable | OpenAPI Spec ladbar | Spec ist JSON-Dict und enthält paths |
 | API-SM-03 | API | smoke | ...::test_products_list_returns_200 | Produktliste erreichbar | GET /products liefert 200 + JSON Content-Type |
 | API-SM-04 | API | smoke | ...::test_products_list_is_not_empty | Produktliste nicht leer | Mind. 1 Produkt vorhanden (nach Seed) |
@@ -364,69 +364,69 @@ Diese Sektion beschreibt **konkret**, was jeder automatisierte Test prüft. Sie 
 ### 17.2 UI Smoke (Robot, Tag: `smoke`)
 | ID | Bereich | Tag | Datei/Test | Zweck | Haupt-Checks |
 |---|---|---|---|---|---|
-| UI-SM-01 | UI | smoke | ui-tests/smoke/home.robot | Homepage erreichbar | Navbar + Search sichtbar |
-| UI-SM-02 | UI | smoke | ui-tests/smoke/navigation.robot | Navigation sichtbar | Navbar vorhanden |
-| UI-SM-03 | UI | smoke | ui-tests/smoke/login.robot | Login möglich | Login mit Demo-User klappt, URL nicht /login |
-| UI-SM-04 | UI | smoke | ui-tests/smoke/product.robot | Products geladen | Mind. 1 Product-Card sichtbar |
-| UI-SM-05 | UI | smoke | ui-tests/smoke/search.robot | Search Feld verfügbar | Search input sichtbar |
-| UI-SM-06 | UI | smoke | ui-tests/smoke/extra/categories_dropdown.robot | Categories Dropdown öffnet | Dropdown klickbar, Entries sichtbar |
-| UI-SM-07 | UI | smoke | ui-tests/smoke/extra/contact_route.robot | Contact Seite erreichbar | Navigation /contact, Heading/Form sichtbar |
-| UI-SM-08 | UI | smoke | ui-tests/smoke/extra/filters_panel_has_brands.robot | Brand Filter vorhanden | Mind. 1 brand checkbox sichtbar |
-| UI-SM-09 | UI | smoke | ui-tests/smoke/extra/filters_panel_has_categories.robot | Category Filter vorhanden | Mind. 1 category checkbox sichtbar |
-| UI-SM-10 | UI | smoke | ui-tests/smoke/extra/login_page_fields.robot | Login Felder vorhanden | Email+Password Felder sichtbar |
-| UI-SM-11 | UI | smoke | ui-tests/smoke/extra/privacy_route.robot | Privacy Seite erreichbar | /privacy heading sichtbar |
-| UI-SM-12 | UI | smoke | ui-tests/smoke/extra/product_details_add_to_cart_visible.robot | Details: Add to cart sichtbar | Erstes Produkt öffnen, Button sichtbar |
-| UI-SM-13 | UI | smoke | ui-tests/smoke/extra/products_have_images.robot | Product Thumbnails sichtbar | Erste Card hat img sichtbar |
-| UI-SM-14 | UI | smoke | ui-tests/smoke/extra/products_have_prices.robot | Product Price sichtbar | Erste Card zeigt Preis (z.B. €) |
-| UI-SM-15 | UI | smoke | ui-tests/smoke/extra/products_route_is_reachable.robot | /products erreichbar | Direkt /products öffnet, Cards sichtbar |
+| UI-SM-01 | UI | smoke | tests/ui/smoke/home.robot | Homepage erreichbar | Navbar + Search sichtbar |
+| UI-SM-02 | UI | smoke | tests/ui/smoke/navigation.robot | Navigation sichtbar | Navbar vorhanden |
+| UI-SM-03 | UI | smoke | tests/ui/smoke/login.robot | Login möglich | Login mit Demo-User klappt, URL nicht /login |
+| UI-SM-04 | UI | smoke | tests/ui/smoke/product.robot | Products geladen | Mind. 1 Product-Card sichtbar |
+| UI-SM-05 | UI | smoke | tests/ui/smoke/search.robot | Search Feld verfügbar | Search input sichtbar |
+| UI-SM-06 | UI | smoke | tests/ui/smoke/categories_dropdown.robot | Categories Dropdown öffnet | Dropdown klickbar, Entries sichtbar |
+| UI-SM-07 | UI | smoke | tests/ui/smoke/contact_route.robot | Contact Seite erreichbar | Navigation /contact, Heading/Form sichtbar |
+| UI-SM-08 | UI | smoke | tests/ui/smoke/filters_panel_has_brands.robot | Brand Filter vorhanden | Mind. 1 brand checkbox sichtbar |
+| UI-SM-09 | UI | smoke | tests/ui/smoke/filters_panel_has_categories.robot | Category Filter vorhanden | Mind. 1 category checkbox sichtbar |
+| UI-SM-10 | UI | smoke | tests/ui/smoke/login_page_fields.robot | Login Felder vorhanden | Email+Password Felder sichtbar |
+| UI-SM-11 | UI | smoke | tests/ui/smoke/privacy_route.robot | Privacy Seite erreichbar | /privacy heading sichtbar |
+| UI-SM-12 | UI | smoke | tests/ui/smoke/product_details_add_to_cart_visible.robot | Details: Add to cart sichtbar | Erstes Produkt öffnen, Button sichtbar |
+| UI-SM-13 | UI | smoke | tests/ui/smoke/products_have_images.robot | Product Thumbnails sichtbar | Erste Card hat img sichtbar |
+| UI-SM-14 | UI | smoke | tests/ui/smoke/products_have_prices.robot | Product Price sichtbar | Erste Card zeigt Preis (z.B. €) |
+| UI-SM-15 | UI | smoke | tests/ui/smoke/products_route_is_reachable.robot | /products erreichbar | Direkt /products öffnet, Cards sichtbar |
 
 ### 17.3 API Regression (pytest, Marker: `regression`)
 | ID | Bereich | Tag | Datei/Test | Zweck | Haupt-Checks |
 |---|---|---|---|---|---|
-| API-REG-01 | API | regression | api-tests/tests/regression/test_api_regression.py::test_openapi_has_info | OpenAPI Metadaten vorhanden | Spec enthält info/title/version |
-| API-REG-02 | API | regression | api-tests/tests/regression/test_api_regression.py::test_products_schema_min_fields | Produktliste hat Mindestfelder | Jedes Produkt enthält id + name/title + price o.ä. |
-| API-REG-03 | API | regression | api-tests/tests/regression/test_api_regression.py::test_categories_have_names | Kategorien haben Namen | Jede Kategorie enthält name/title |
-| API-REG-04 | API | regression | api-tests/tests/regression/test_api_regression.py::test_brands_have_names | Brands haben Namen | Jede Brand enthält name/title |
-| API-REG-05 | API | regression | api-tests/tests/regression/test_api_regression.py::test_product_details_endpoint_returns_same_id | Details liefern die gleiche ID | GET /products/{id} enthält gleiche id wie angefragt |
-| API-REG-06 | API | regression | api-tests/tests/regression/test_api_regression.py::test_products_pagination_changes_items_if_supported | Pagination verändert Ergebnis (falls unterstützt) | Seite 1 != Seite 2 (oder skip) |
-| API-REG-07 | API | regression | api-tests/tests/regression/test_api_regression.py::test_products_search_returns_subset_if_supported | Search reduziert Ergebnis (falls unterstützt) | Query liefert Teilmenge oder skip |
-| API-REG-08 | API | regression | api-tests/tests/regression/test_api_regression.py::test_products_sort_price_asc_if_supported | Sortierung nach Preis (falls unterstützt) | Sort-Param liefert 200/4xx, aber kein 5xx |
-| API-REG-09 | API | regression | api-tests/tests/regression/test_api_regression.py::test_products_filter_by_category_if_supported | Kategorie-Filter (falls unterstützt) | Filter liefert 200, kein 5xx, ggf. skip |
-| API-REG-10 | API | regression | api-tests/tests/regression/test_api_regression.py::test_products_filter_by_brand_if_supported | Brand-Filter (falls unterstützt) | Filter liefert 200, kein 5xx, ggf. skip |
-| API-REG-11 | API | regression | api-tests/tests/regression/test_api_regression.py::test_login_returns_token | Login gibt Token zurück | POST /users/login liefert token (JWT o.ä.) |
-| API-REG-12 | API | regression | api-tests/tests/regression/test_api_regression.py::test_me_endpoint_requires_auth_if_present | Auth-Guard /me | Ohne Auth 401/403 oder skip wenn Endpoint fehlt |
-| API-REG-13 | API | regression | api-tests/tests/regression/test_api_regression.py::test_invoices_list_requires_auth_if_present | Auth-Guard invoices | Ohne Auth 401/403 oder skip |
-| API-REG-14 | API | regression | api-tests/tests/regression/test_api_regression.py::test_favorites_list_requires_auth_if_present | Auth-Guard favorites | Ohne Auth 401/403 oder skip |
-| API-REG-15 | API | regression | api-tests/tests/regression/test_api_regression.py::test_cart_get_requires_auth_if_present | Cart-GET Verhalten | Ohne Auth 401/403/404 je nach API; mit Auth 200/404 |
-| API-REG-16 | API | regression | api-tests/tests/regression/test_api_regression.py::test_products_endpoint_does_not_error_on_large_page_if_supported | Large page Param robust | Große page/pageSize verursacht kein 5xx (oder skip) |
-| API-REG-17 | API | regression | api-tests/tests/regression/test_api_regression.py::test_products_endpoint_rejects_invalid_sort_value_if_supported | Invalid sort robust | Ungültiger sort verursacht kein 5xx (200/4xx ok) |
-| API-REG-18 | API | regression | api-tests/tests/regression/test_api_regression.py::test_categories_endpoint_is_idempotent | Kategorien idempotent | 2x GET liefert konsistente Struktur |
-| API-REG-19 | API | regression | api-tests/tests/regression/test_api_regression.py::test_brands_endpoint_is_idempotent | Brands idempotent | 2x GET konsistente Struktur |
-| API-REG-20 | API | regression | api-tests/tests/regression/test_api_regression.py::test_products_endpoint_response_time_reasonable | Response time grob ok | /products antwortet < definierter Schwelle (z.B. 2s) |
+| API-REG-01 | API | regression | tests/api/tests/regression/test_api_regression.py::test_openapi_has_info | OpenAPI Metadaten vorhanden | Spec enthält info/title/version |
+| API-REG-02 | API | regression | tests/api/tests/regression/test_api_regression.py::test_products_schema_min_fields | Produktliste hat Mindestfelder | Jedes Produkt enthält id + name/title + price o.ä. |
+| API-REG-03 | API | regression | tests/api/tests/regression/test_api_regression.py::test_categories_have_names | Kategorien haben Namen | Jede Kategorie enthält name/title |
+| API-REG-04 | API | regression | tests/api/tests/regression/test_api_regression.py::test_brands_have_names | Brands haben Namen | Jede Brand enthält name/title |
+| API-REG-05 | API | regression | tests/api/tests/regression/test_api_regression.py::test_product_details_endpoint_returns_same_id | Details liefern die gleiche ID | GET /products/{id} enthält gleiche id wie angefragt |
+| API-REG-06 | API | regression | tests/api/tests/regression/test_api_regression.py::test_products_pagination_changes_items_if_supported | Pagination verändert Ergebnis (falls unterstützt) | Seite 1 != Seite 2 (oder skip) |
+| API-REG-07 | API | regression | tests/api/tests/regression/test_api_regression.py::test_products_search_returns_subset_if_supported | Search reduziert Ergebnis (falls unterstützt) | Query liefert Teilmenge oder skip |
+| API-REG-08 | API | regression | tests/api/tests/regression/test_api_regression.py::test_products_sort_price_asc_if_supported | Sortierung nach Preis (falls unterstützt) | Sort-Param liefert 200/4xx, aber kein 5xx |
+| API-REG-09 | API | regression | tests/api/tests/regression/test_api_regression.py::test_products_filter_by_category_if_supported | Kategorie-Filter (falls unterstützt) | Filter liefert 200, kein 5xx, ggf. skip |
+| API-REG-10 | API | regression | tests/api/tests/regression/test_api_regression.py::test_products_filter_by_brand_if_supported | Brand-Filter (falls unterstützt) | Filter liefert 200, kein 5xx, ggf. skip |
+| API-REG-11 | API | regression | tests/api/tests/regression/test_api_regression.py::test_login_returns_token | Login gibt Token zurück | POST /users/login liefert token (JWT o.ä.) |
+| API-REG-12 | API | regression | tests/api/tests/regression/test_api_regression.py::test_me_endpoint_requires_auth_if_present | Auth-Guard /me | Ohne Auth 401/403 oder skip wenn Endpoint fehlt |
+| API-REG-13 | API | regression | tests/api/tests/regression/test_api_regression.py::test_invoices_list_requires_auth_if_present | Auth-Guard invoices | Ohne Auth 401/403 oder skip |
+| API-REG-14 | API | regression | tests/api/tests/regression/test_api_regression.py::test_favorites_list_requires_auth_if_present | Auth-Guard favorites | Ohne Auth 401/403 oder skip |
+| API-REG-15 | API | regression | tests/api/tests/regression/test_api_regression.py::test_cart_get_requires_auth_if_present | Cart-GET Verhalten | Ohne Auth 401/403/404 je nach API; mit Auth 200/404 |
+| API-REG-16 | API | regression | tests/api/tests/regression/test_api_regression.py::test_products_endpoint_does_not_error_on_large_page_if_supported | Large page Param robust | Große page/pageSize verursacht kein 5xx (oder skip) |
+| API-REG-17 | API | regression | tests/api/tests/regression/test_api_regression.py::test_products_endpoint_rejects_invalid_sort_value_if_supported | Invalid sort robust | Ungültiger sort verursacht kein 5xx (200/4xx ok) |
+| API-REG-18 | API | regression | tests/api/tests/regression/test_api_regression.py::test_categories_endpoint_is_idempotent | Kategorien idempotent | 2x GET liefert konsistente Struktur |
+| API-REG-19 | API | regression | tests/api/tests/regression/test_api_regression.py::test_brands_endpoint_is_idempotent | Brands idempotent | 2x GET konsistente Struktur |
+| API-REG-20 | API | regression | tests/api/tests/regression/test_api_regression.py::test_products_endpoint_response_time_reasonable | Response time grob ok | /products antwortet < definierter Schwelle (z.B. 2s) |
 
 ### 17.4 UI Regression (Robot, Tag: `regression`)
 | ID | Bereich | Tag | Datei/Test | Zweck | Haupt-Checks |
 |---|---|---|---|---|---|
-| UI-REG-01 | UI | regression | ui-tests/regression/cart/add_to_cart.robot | Add to Cart | Produkt öffnen und in Cart legen; Cart count/Badge aktualisiert |
-| UI-REG-02 | UI | regression | ui-tests/regression/cart/cart_contains_added_product.robot | Cart enthält Produktname | Cart Seite zeigt Name des hinzugefügten Produkts |
-| UI-REG-03 | UI | regression | ui-tests/regression/cart/cart_persists_after_reload.robot | Cart persistiert nach Reload | Reload behält Cart Inhalt (local storage/session) |
-| UI-REG-04 | UI | regression | ui-tests/regression/filters/filter_by_category.robot | Filter by Category | Kategorie anhaken -> Ergebnisse ändern/Tag aktiv |
-| UI-REG-05 | UI | regression | ui-tests/regression/filters/filter_by_brand.robot | Filter by Brand | Brand anhaken -> Ergebnisse ändern/Tag aktiv |
-| UI-REG-06 | UI | regression | ui-tests/regression/filters/clear_brand_filter.robot | Clear Brand Filter | Filter setzen und wieder entfernen -> Ergebnisse wieder da |
-| UI-REG-07 | UI | regression | ui-tests/regression/login/negative_login.robot | Negative Login | Falsche Credentials -> Fehlermeldung, bleibt auf /login |
-| UI-REG-08 | UI | regression | ui-tests/regression/navigation/categories_dropdown_entries.robot | Categories Dropdown Entries | Dropdown enthält >=1 Eintrag |
-| UI-REG-09 | UI | regression | ui-tests/regression/navigation/contact_page_form_present.robot | Contact Form vorhanden | Contact Seite hat Formularfelder + Submit |
-| UI-REG-10 | UI | regression | ui-tests/regression/navigation/privacy_page_heading.robot | Privacy Heading | Privacy Seite zeigt Heading/Content |
-| UI-REG-11 | UI | regression | ui-tests/regression/products/direct_products_access.robot | Direct /products | Direktzugriff lädt Cards |
-| UI-REG-12 | UI | regression | ui-tests/regression/products/open_first_product_details.robot | Open Product Details | Erstes Produkt öffnen -> Details-Seite sichtbar |
-| UI-REG-13 | UI | regression | ui-tests/regression/products/details_has_add_to_cart.robot | Details Add to Cart | Details-Seite hat Add-to-cart Button |
-| UI-REG-14 | UI | regression | ui-tests/regression/products/back_to_products_after_details.robot | Back to Products | Von Details zurück -> Productliste sichtbar |
-| UI-REG-15 | UI | regression | ui-tests/regression/products/open_two_products_titles_differ.robot | Two Products Titles differ | Zwei Produkte öffnen -> Titel sind verschieden |
-| UI-REG-16 | UI | regression | ui-tests/regression/products/product_image_src_not_empty.robot | Image src not empty | Produktbild src ist nicht leer |
-| UI-REG-17 | UI | regression | ui-tests/regression/search/search_results.robot | Search returns results | Suche nach existierendem Begriff -> Cards vorhanden |
-| UI-REG-18 | UI | regression | ui-tests/regression/search/clear_search_restores_products.robot | Clear search restores | Search leeren -> Cards wieder sichtbar |
-| UI-REG-19 | UI | regression | ui-tests/regression/search/no_results_empty_or_message.robot | No results state | Suche nach Unsinn -> entweder 'no products found' ODER 0 Cards |
-| UI-REG-20 | UI | regression | ui-tests/regression/sorting/sort_by_price.robot | Sort by price | Sort Dropdown -> Preis sortiert (oder mind. kein Error) |
+| UI-REG-01 | UI | regression | tests/ui/regression/cart/add_to_cart.robot | Add to Cart | Produkt öffnen und in Cart legen; Cart count/Badge aktualisiert |
+| UI-REG-02 | UI | regression | tests/ui/regression/cart/cart_contains_added_product.robot | Cart enthält Produktname | Cart Seite zeigt Name des hinzugefügten Produkts |
+| UI-REG-03 | UI | regression | tests/ui/regression/cart/cart_persists_after_reload.robot | Cart persistiert nach Reload | Reload behält Cart Inhalt (local storage/session) |
+| UI-REG-04 | UI | regression | tests/ui/regression/filters/filter_by_category.robot | Filter by Category | Kategorie anhaken -> Ergebnisse ändern/Tag aktiv |
+| UI-REG-05 | UI | regression | tests/ui/regression/filters/filter_by_brand.robot | Filter by Brand | Brand anhaken -> Ergebnisse ändern/Tag aktiv |
+| UI-REG-06 | UI | regression | tests/ui/regression/filters/clear_brand_filter.robot | Clear Brand Filter | Filter setzen und wieder entfernen -> Ergebnisse wieder da |
+| UI-REG-07 | UI | regression | tests/ui/regression/login/negative_login.robot | Negative Login | Falsche Credentials -> Fehlermeldung, bleibt auf /login |
+| UI-REG-08 | UI | regression | tests/ui/regression/navigation/categories_dropdown_entries.robot | Categories Dropdown Entries | Dropdown enthält >=1 Eintrag |
+| UI-REG-09 | UI | regression | tests/ui/regression/navigation/contact_page_form_present.robot | Contact Form vorhanden | Contact Seite hat Formularfelder + Submit |
+| UI-REG-10 | UI | regression | tests/ui/regression/navigation/privacy_page_heading.robot | Privacy Heading | Privacy Seite zeigt Heading/Content |
+| UI-REG-11 | UI | regression | tests/ui/regression/products/direct_products_access.robot | Direct /products | Direktzugriff lädt Cards |
+| UI-REG-12 | UI | regression | tests/ui/regression/products/open_first_product_details.robot | Open Product Details | Erstes Produkt öffnen -> Details-Seite sichtbar |
+| UI-REG-13 | UI | regression | tests/ui/regression/products/details_has_add_to_cart.robot | Details Add to Cart | Details-Seite hat Add-to-cart Button |
+| UI-REG-14 | UI | regression | tests/ui/regression/products/back_to_products_after_details.robot | Back to Products | Von Details zurück -> Productliste sichtbar |
+| UI-REG-15 | UI | regression | tests/ui/regression/products/open_two_products_titles_differ.robot | Two Products Titles differ | Zwei Produkte öffnen -> Titel sind verschieden |
+| UI-REG-16 | UI | regression | tests/ui/regression/products/product_image_src_not_empty.robot | Image src not empty | Produktbild src ist nicht leer |
+| UI-REG-17 | UI | regression | tests/ui/regression/search/search_results.robot | Search returns results | Suche nach existierendem Begriff -> Cards vorhanden |
+| UI-REG-18 | UI | regression | tests/ui/regression/search/clear_search_restores_products.robot | Clear search restores | Search leeren -> Cards wieder sichtbar |
+| UI-REG-19 | UI | regression | tests/ui/regression/search/no_results_empty_or_message.robot | No results state | Suche nach Unsinn -> entweder 'no products found' ODER 0 Cards |
+| UI-REG-20 | UI | regression | tests/ui/regression/sorting/sort_by_price.robot | Sort by price | Sort Dropdown -> Preis sortiert (oder mind. kein Error) |
 
 ### 17.5 Pflege-Regeln (damit es nicht veraltet)
 - **Jeder neue Test** muss in diesen Katalog aufgenommen werden (1 Zeile).

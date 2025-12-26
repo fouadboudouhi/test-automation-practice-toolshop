@@ -2,7 +2,7 @@
 
 This repo uses GitHub Actions to run UI tests against a Dockerized stack.
 
-Workflow: `ci-ui-tests.yml`
+Workflow: `.github/workflows/ci-tests/ui.yml`
 
 ---
 
@@ -32,7 +32,7 @@ Then CI detects the mapped ports using:
 - `docker compose port angular-ui 4200`
 
 And exports:
-- `API_DOC_URL=http://localhost:<web_port>/api/documentation`
+- `API_HOST / API_DOCS_URL=http://localhost:<web_port>/api/documentation`
 - `BASE_URL=http://localhost:<ui_port>`
 
 This prevents conflicts across jobs and makes the workflow more robust.
@@ -68,4 +68,3 @@ Always inspect uploaded Robot artifacts:
 - `log.html` is the first stop
 - `report.html` gives the suite overview
 - `output.xml` is machine-readable
-

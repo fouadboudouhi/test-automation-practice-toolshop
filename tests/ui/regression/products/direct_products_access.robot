@@ -1,6 +1,8 @@
 *** Settings ***
 Documentation     Regression: products listing is reachable (home shows products).
 Resource          ../../resources/keywords/common.robot
+Test Setup       Open Toolshop
+Test Teardown    Close Toolshop
 Suite Setup       Open Toolshop
 
 *** Test Cases ***

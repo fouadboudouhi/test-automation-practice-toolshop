@@ -1,6 +1,8 @@
 *** Settings ***
 Documentation     Regression: search then clear search and products are shown again.
 Resource          ../../resources/keywords/common.robot
+Test Setup       Open Toolshop
+Test Teardown    Close Toolshop
 Suite Setup       Open Toolshop
 
 *** Test Cases ***

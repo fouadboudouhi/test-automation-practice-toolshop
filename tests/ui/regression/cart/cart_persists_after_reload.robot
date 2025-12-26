@@ -1,6 +1,8 @@
 *** Settings ***
 Documentation     Regression: cart content persists after reload.
 Resource          ../../resources/keywords/common.robot
+Test Setup       Open Toolshop
+Test Teardown    Close Toolshop
 Library           String
 Suite Setup       Open Toolshop
 

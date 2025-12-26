@@ -1,5 +1,7 @@
 # Toolshop – UI/API Test-Automation (Docker + Robot + Pytest)
 
+[![UI Tests](https://github.com/fouadboudouhi/test-automation-practice-toolshop/actions/workflows/ci-ui-tests.yml/badge.svg?branch=main)](https://github.com/fouadboudouhi/test-automation-practice-toolshop/actions/workflows/ci-ui-tests.yml)
+
 Dieses Repo startet die **Practice Software Testing**-Demo via **Docker Compose** und führt darauf **UI-Tests (Robot Framework + Browser/Playwright)** sowie **API-Tests (pytest + requests)** aus – lokal und in CI.
 
 ## System-Überblick (ASCII)
@@ -33,7 +35,7 @@ Robot UI Tests ─────▶│  │ angular-ui   │ 4200   │ web (nginx
                      └──────────────────────────────────────────────────┘
 ```
 
-> **Wichtig:** `web (nginx)` stellt i.d.R. die API inkl. Swagger unter `http://localhost:8091/api/documentation` bereit.  
+> **Wichtig:** `web (nginx)` stellt i.d.R. die API inkl. Swagger unter `http://localhost:8091/api/documentation` bereit.
 > `angular-ui` läuft lokal typischerweise unter `http://localhost:4200`.
 
 ---
@@ -88,8 +90,8 @@ make up           # Docker Stack starten
 make down         # Stack stoppen (Volumes behalten)
 make clean        # Stack stoppen + Volumes löschen
 make seed         # DB migrieren + seeden + verifizieren
-make smoke        # Smoke-Tests (Tags) ausführen
-make regression   # Regression-Tests (Tags) ausführen
+make smoke        # Smoke-Tests (API + UI) ausführen
+make regression   # Regression-Tests (API + UI) ausführen
 make test-all     # up -> seed -> smoke -> regression
 make logs         # Stack logs
 make ps           # docker compose ps
@@ -103,11 +105,13 @@ Diese Werte kannst du (lokal/CI) überschreiben:
 
 - `COMPOSE_FILE` (Default: `docker/docker-compose.yml`)
 - `BASE_URL` (Default: `http://localhost:4200`)
-- `API_DOC_URL` (Default: `http://localhost:8091/api/documentation`)
+- `API_HOST` (Default: `http://localhost:8091`)
+- `API_DOCS_URL` (Default: `http://localhost:8091/api/documentation`)
+- *(deprecated alias)* `API_DOC_URL` → same as `API_DOCS_URL`
 - `HEADLESS` (`true/false`)
 - `DEMO_EMAIL`, `DEMO_PASSWORD`
 - `ARTIFACTS` (z. B. `artifacts`)
-- Optional: Compose Project Name (gegen Port-Konflikte), z. B.  
+- Optional: Compose Project Name (gegen Port-Konflikte), z. B.
   `COMPOSE_PROJECT_NAME=toolshop-e2e`
 
 Beispiel:
@@ -120,7 +124,7 @@ BASE_URL=http://localhost:4200 HEADLESS=false make smoke
 
 ## Ordnerstruktur (Tests)
 
-- `ui-tests/`
+- `tests/ui/`
   - `smoke/` – UI Smoke Suites
   - `regression/` – UI Regression Suites
   - `resources/` – gemeinsame Keywords/Variablen
@@ -151,14 +155,14 @@ docker ps
 3) Ports im Compose via Env/Overrides anpassen (falls dein Compose das unterstützt).
 
 ### UI/Swagger ist “reachable”, aber Tests finden keine Elemente
-Typisch: App ist da, aber Daten/Seed/Backend noch nicht bereit.  
+Typisch: App ist da, aber Daten/Seed/Backend noch nicht bereit.
 Lösung: `make seed` sicherstellen und in Tests nur **gezielte Waits** verwenden (keine Sleeps).
 
 ---
 
 ## CI
 
-Die GitHub Actions Workflow-Datei (`ci-ui-tests.yml`) führt aus:
+Die GitHub Actions Workflow-Datei (`ci-tests/ui.yml`) führt aus:
 
 - **Smoke** als Gate (muss grün sein)
 - **Regression** nur wenn Smoke erfolgreich war

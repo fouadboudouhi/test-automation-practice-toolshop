@@ -1,5 +1,7 @@
 *** Settings ***
 Resource          ../../resources/keywords/common.robot
+Test Setup       Open Toolshop
+Test Teardown    Close Toolshop
 Suite Setup       Open Toolshop
 Suite Teardown    Close Toolshop
 
