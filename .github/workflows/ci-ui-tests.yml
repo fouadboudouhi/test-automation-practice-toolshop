@@ -10,21 +10,26 @@ concurrency:
   group: ui-tests-${{ github.ref }}
   cancel-in-progress: true
 
+# This workflow runs the Toolshop stack in Docker and executes Robot Framework UI tests.
+#
+# Key design choices:
+# - We use a compose override file (docker/docker-compose.ci.yml) to publish RANDOM host ports.
+#   This avoids port collisions on GitHub runners and allows parallelism via COMPOSE_PROJECT_NAME.
+# - We detect the mapped host ports dynamically and export BASE_URL / API_DOC_URL to GITHUB_ENV.
+# - Artifacts are written to artifacts/... and uploaded, so failures are diagnosable.
+
 jobs:
   smoke:
     name: Smoke (QGate)
     runs-on: ubuntu-latest
 
     env:
-      BASE_URL: http://localhost:4200
-      API_DOC_URL: http://localhost:8091/api/documentation
+      COMPOSE_FILE: docker/docker-compose.yml
+      COMPOSE_PROJECT_NAME: ui-${{ github.run_id }}-${{ github.run_attempt }}
 
       API_SERVICE: laravel-api
       DB_SERVICE: mariadb
       SEED_CMD: php artisan migrate:fresh --seed
-
-      COMPOSE_FILE: docker/docker-compose.yml
-      COMPOSE_PROJECT_NAME: ui-${{ github.run_id }}-${{ github.run_attempt }}
 
       HEADLESS: "true"
       DEMO_EMAIL: customer@practicesoftwaretesting.com
@@ -34,12 +39,44 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Create docker-compose CI override (random host ports)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > docker/docker-compose.ci.yml <<'YML'
+          services:
+            mariadb:
+              ports: []
+            web:
+              ports:
+                - "80"
+            angular-ui:
+              ports:
+                - "4200"
+          YML
+
       - name: Start docker stack
         shell: bash
         run: |
           set -euo pipefail
-          docker compose -f "${COMPOSE_FILE}" up -d --pull missing
-          docker compose -f "${COMPOSE_FILE}" ps
+          COMPOSE="docker compose -p '${COMPOSE_PROJECT_NAME}' -f '${COMPOSE_FILE}' -f 'docker/docker-compose.ci.yml'"
+          eval "$COMPOSE up -d --pull missing"
+          eval "$COMPOSE ps"
+
+      - name: Detect published ports and export BASE_URL / API_DOC_URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMPOSE="docker compose -p '${COMPOSE_PROJECT_NAME}' -f '${COMPOSE_FILE}' -f 'docker/docker-compose.ci.yml'"
+
+          WEB_BIND="$(eval "$COMPOSE port web 80")"
+          UI_BIND="$(eval "$COMPOSE port angular-ui 4200")"
+
+          WEB_PORT="${WEB_BIND##*:}"
+          UI_PORT="${UI_BIND##*:}"
+
+          echo "API_DOC_URL=http://localhost:${WEB_PORT}/api/documentation" >> "$GITHUB_ENV"
+          echo "BASE_URL=http://localhost:${UI_PORT}" >> "$GITHUB_ENV"
 
       - name: Wait for API docs endpoint
         shell: bash
@@ -54,48 +91,42 @@ jobs:
             sleep 2
           done
           echo "API docs not reachable ❌"
-          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
           exit 1
 
       - name: Wait for DB to accept connections
         shell: bash
         run: |
           set -euo pipefail
+          COMPOSE="docker compose -p '${COMPOSE_PROJECT_NAME}' -f '${COMPOSE_FILE}' -f 'docker/docker-compose.ci.yml'"
+
           echo "Waiting for DB (${DB_SERVICE}) ..."
           for i in {1..120}; do
-            if docker compose -f "${COMPOSE_FILE}" exec -T "${DB_SERVICE}" \
-              sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
+            if eval "$COMPOSE exec -T '${DB_SERVICE}' sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent'" >/dev/null 2>&1; then
               echo "DB ready ✅"
               exit 0
             fi
             sleep 2
           done
           echo "DB not ready ❌"
-          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
           exit 1
 
       - name: Migrate + seed database
         shell: bash
         run: |
           set -euo pipefail
+          COMPOSE="docker compose -p '${COMPOSE_PROJECT_NAME}' -f '${COMPOSE_FILE}' -f 'docker/docker-compose.ci.yml'"
           echo "Seeding in ${API_SERVICE}: ${SEED_CMD}"
-          docker compose -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" ${SEED_CMD}
+          eval "$COMPOSE exec -T '${API_SERVICE}' ${SEED_CMD}"
 
       - name: Verify seed (product count > 0)
         shell: bash
         run: |
           set -euo pipefail
-          OUT="$(docker compose -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" \
-            php artisan tinker --execute="echo \App\Models\Product::count();" || true)"
+          COMPOSE="docker compose -p '${COMPOSE_PROJECT_NAME}' -f '${COMPOSE_FILE}' -f 'docker/docker-compose.ci.yml'"
+          OUT="$(eval "$COMPOSE exec -T '${API_SERVICE}' php artisan tinker --execute='echo \App\Models\Product::count();'" || true)"
           COUNT="$(echo "${OUT}" | tr -dc '0-9' || true)"
           echo "Product count: ${COUNT}"
-          if [[ -z "${COUNT}" || "${COUNT}" -le 0 ]]; then
-            echo "Seed verification failed ❌"
-            echo "${OUT}"
-            docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
-            exit 1
-          fi
-          echo "Seed verification OK ✅"
+          [[ -n "${COUNT}" && "${COUNT}" -gt 0 ]]
 
       - name: Wait for UI
         shell: bash
@@ -110,7 +141,6 @@ jobs:
             sleep 2
           done
           echo "UI not reachable ❌"
-          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
           exit 1
 
       - name: Set up Python
@@ -126,13 +156,17 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ hashFiles('requirements.txt') }}
 
       - name: Install deps + init Browser
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           rfbrowser init
 
       - name: Run Smoke (QGate)
+        shell: bash
         run: |
+          set -euo pipefail
           robot --outputdir artifacts/smoke --include smoke ui-tests
 
       - name: Upload Smoke artifacts
@@ -146,13 +180,15 @@ jobs:
         if: always()
         shell: bash
         run: |
-          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
+          COMPOSE="docker compose -p '${COMPOSE_PROJECT_NAME}' -f '${COMPOSE_FILE}' -f 'docker/docker-compose.ci.yml'"
+          eval "$COMPOSE logs --no-color | tail -n 500"
 
       - name: Stop docker stack
         if: always()
         shell: bash
         run: |
-          docker compose -f "${COMPOSE_FILE}" down -v --remove-orphans
+          COMPOSE="docker compose -p '${COMPOSE_PROJECT_NAME}' -f '${COMPOSE_FILE}' -f 'docker/docker-compose.ci.yml'"
+          eval "$COMPOSE down -v --remove-orphans"
 
   regression:
     name: Regression
@@ -161,15 +197,12 @@ jobs:
     if: needs.smoke.result == 'success'
 
     env:
-      BASE_URL: http://localhost:4200
-      API_DOC_URL: http://localhost:8091/api/documentation
+      COMPOSE_FILE: docker/docker-compose.yml
+      COMPOSE_PROJECT_NAME: ui-${{ github.run_id }}-${{ github.run_attempt }}-reg
 
       API_SERVICE: laravel-api
       DB_SERVICE: mariadb
       SEED_CMD: php artisan migrate:fresh --seed
-
-      COMPOSE_FILE: docker/docker-compose.yml
-      COMPOSE_PROJECT_NAME: ui-${{ github.run_id }}-${{ github.run_attempt }}-reg
 
       HEADLESS: "true"
       DEMO_EMAIL: customer@practicesoftwaretesting.com
@@ -179,48 +212,82 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Create docker-compose CI override (random host ports)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > docker/docker-compose.ci.yml <<'YML'
+          services:
+            mariadb:
+              ports: []
+            web:
+              ports:
+                - "80"
+            angular-ui:
+              ports:
+                - "4200"
+          YML
+
       - name: Start docker stack
         shell: bash
         run: |
           set -euo pipefail
-          docker compose -f "${COMPOSE_FILE}" up -d --pull missing
-          docker compose -f "${COMPOSE_FILE}" ps
+          COMPOSE="docker compose -p '${COMPOSE_PROJECT_NAME}' -f '${COMPOSE_FILE}' -f 'docker/docker-compose.ci.yml'"
+          eval "$COMPOSE up -d --pull missing"
+          eval "$COMPOSE ps"
 
-      - name: Wait for API + DB + seed
+      - name: Detect published ports and export BASE_URL / API_DOC_URL
         shell: bash
         run: |
           set -euo pipefail
+          COMPOSE="docker compose -p '${COMPOSE_PROJECT_NAME}' -f '${COMPOSE_FILE}' -f 'docker/docker-compose.ci.yml'"
+
+          WEB_BIND="$(eval "$COMPOSE port web 80")"
+          UI_BIND="$(eval "$COMPOSE port angular-ui 4200")"
+
+          WEB_PORT="${WEB_BIND##*:}"
+          UI_PORT="${UI_BIND##*:}"
+
+          echo "API_DOC_URL=http://localhost:${WEB_PORT}/api/documentation" >> "$GITHUB_ENV"
+          echo "BASE_URL=http://localhost:${UI_PORT}" >> "$GITHUB_ENV"
+
+      - name: Wait for API + DB + seed + UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMPOSE="docker compose -p '${COMPOSE_PROJECT_NAME}' -f '${COMPOSE_FILE}' -f 'docker/docker-compose.ci.yml'"
 
           echo "Waiting for API docs on ${API_DOC_URL} ..."
+          ok=false
           for i in {1..180}; do
-            curl -fsS "${API_DOC_URL}" >/dev/null 2>&1 && break
+            if curl -fsS "${API_DOC_URL}" >/dev/null 2>&1; then ok=true; break; fi
             sleep 2
           done
+          $ok || (echo "API not ready" && eval "$COMPOSE logs --no-color | tail -n 500" && exit 1)
 
           echo "Waiting for DB (${DB_SERVICE}) ..."
+          ok=false
           for i in {1..120}; do
-            if docker compose -f "${COMPOSE_FILE}" exec -T "${DB_SERVICE}" \
-              sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
-              break
-            fi
+            if eval "$COMPOSE exec -T '${DB_SERVICE}' sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent'" >/dev/null 2>&1; then ok=true; break; fi
             sleep 2
           done
+          $ok || (echo "DB not ready" && eval "$COMPOSE logs --no-color | tail -n 500" && exit 1)
 
           echo "Seeding in ${API_SERVICE}: ${SEED_CMD}"
-          docker compose -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" ${SEED_CMD}
+          eval "$COMPOSE exec -T '${API_SERVICE}' ${SEED_CMD}"
 
-          OUT="$(docker compose -f "${COMPOSE_FILE}" exec -T "${API_SERVICE}" \
-            php artisan tinker --execute="echo \App\Models\Product::count();" || true)"
+          OUT="$(eval "$COMPOSE exec -T '${API_SERVICE}' php artisan tinker --execute='echo \App\Models\Product::count();'" || true)"
           COUNT="$(echo "${OUT}" | tr -dc '0-9' || true)"
           echo "Product count: ${COUNT}"
-          [[ -n "${COUNT}" && "${COUNT}" -gt 0 ]]
+          [[ -n "${COUNT}" && "${COUNT}" -gt 0 ]] || (echo "Seed verification failed" && exit 1)
 
           echo "Waiting for UI on ${BASE_URL} ..."
+          ok=false
           for i in {1..180}; do
-            curl -fsS "${BASE_URL}" >/dev/null 2>&1 && exit 0
+            if curl -fsS "${BASE_URL}" >/dev/null 2>&1; then ok=true; break; fi
             sleep 2
           done
-          exit 1
+          $ok || (echo "UI not reachable" && eval "$COMPOSE logs --no-color | tail -n 500" && exit 1)
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -235,13 +302,17 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ hashFiles('requirements.txt') }}
 
       - name: Install deps + init Browser
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           rfbrowser init
 
       - name: Run Regression
+        shell: bash
         run: |
+          set -euo pipefail
           robot --outputdir artifacts/regression --include regression ui-tests
 
       - name: Upload Regression artifacts
@@ -255,10 +326,12 @@ jobs:
         if: always()
         shell: bash
         run: |
-          docker compose -f "${COMPOSE_FILE}" logs --no-color | tail -n 500
+          COMPOSE="docker compose -p '${COMPOSE_PROJECT_NAME}' -f '${COMPOSE_FILE}' -f 'docker/docker-compose.ci.yml'"
+          eval "$COMPOSE logs --no-color | tail -n 500"
 
       - name: Stop docker stack
         if: always()
         shell: bash
         run: |
-          docker compose -f "${COMPOSE_FILE}" down -v --remove-orphans
+          COMPOSE="docker compose -p '${COMPOSE_PROJECT_NAME}' -f '${COMPOSE_FILE}' -f 'docker/docker-compose.ci.yml'"
+          eval "$COMPOSE down -v --remove-orphans"

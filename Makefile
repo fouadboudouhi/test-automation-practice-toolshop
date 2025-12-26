@@ -1,24 +1,50 @@
 SHELL := /bin/bash
 
+# ----------------------------
+# Config (override via env)
+# ----------------------------
 COMPOSE_FILE ?= docker/docker-compose.yml
+# Optional second compose file, e.g. docker/docker-compose.ci.yml
+COMPOSE_OVERRIDE ?=
+
+COMPOSE_PROJECT_NAME ?= toolshop-e2e
 
 API_SERVICE  ?= laravel-api
 DB_SERVICE   ?= mariadb
 
-BASE_URL     ?= http://localhost:4200
-API_DOC_URL  ?= http://localhost:8091/api/documentation
+# Web reverse proxy (API docs live behind this)
+WEB_PORT     ?= 8091
+API_DOC_URL  ?= http://localhost:$(WEB_PORT)/api/documentation
+
+# UI
+UI_PORT      ?= 4200
+BASE_URL     ?= http://localhost:$(UI_PORT)
 
 SEED_CMD     ?= php artisan migrate:fresh --seed
 
+# Robot
 TEST_ROOT    ?= ui-tests
 SMOKE_TAG    ?= smoke
 REG_TAG      ?= regression
+HEADLESS     ?= true
 
-ARTIFACTS    ?= artifacts_local
+# Artifacts
+ARTIFACTS    ?= artifacts
+UI_ARTIFACTS ?= $(ARTIFACTS)/ui
+API_ARTIFACTS?= $(ARTIFACTS)/api
 
-DC := docker compose -f $(COMPOSE_FILE)
+# Compose command (supports optional override file)
+COMPOSE_FILES := -f $(COMPOSE_FILE)
+ifneq ($(strip $(COMPOSE_OVERRIDE)),)
+COMPOSE_FILES += -f $(COMPOSE_OVERRIDE)
+endif
 
-.PHONY: help up down clean logs ps wait-api wait-db seed verify-seed rfbrowser-init smoke regression test-all
+DC := docker compose -p $(COMPOSE_PROJECT_NAME) $(COMPOSE_FILES)
+
+.PHONY: help up down clean ps logs \
+        wait-api wait-ui wait-db seed verify-seed \
+        rfbrowser-init ui-smoke ui-regression \
+        smoke regression test-all
 
 help:
 	@echo "Targets:"
@@ -26,21 +52,27 @@ help:
 	@echo "  make down          - stop stack (keep volumes)"
 	@echo "  make clean         - stop stack and remove volumes"
 	@echo "  make seed          - wait db + migrate:fresh --seed + verify"
-	@echo "  make smoke         - run smoke tests (tagged)"
-	@echo "  make regression    - run regression tests (tagged)"
-	@echo "  make test-all      - up -> seed -> smoke (gate) -> regression"
-	@echo "  make logs          - tail stack logs"
-	@echo "  make ps            - show stack status"
+	@echo "  make smoke         - run SMOKE (API + UI) if available"
+	@echo "  make regression    - run REGRESSION (API + UI) if available"
+	@echo "  make ui-smoke      - run Robot UI smoke only"
+	@echo "  make ui-regression - run Robot UI regression only"
+	@echo "  make test-all      - up -> seed -> smoke -> regression"
+	@echo ""
+	@echo "Useful overrides:"
+	@echo "  COMPOSE_PROJECT_NAME=toolshop-e2e-2 WEB_PORT=8092 UI_PORT=4201 make up"
+	@echo "  HEADLESS=false make ui-smoke"
 
 up:
 	$(DC) up -d --pull missing
 	$(DC) ps
+	@echo "Web/API docs: $(API_DOC_URL)"
+	@echo "UI:          $(BASE_URL)"
 
 down:
 	$(DC) down
 
 clean:
-	$(DC) down -v
+	$(DC) down -v --remove-orphans
 
 ps:
 	$(DC) ps
@@ -50,7 +82,7 @@ logs:
 
 wait-api:
 	@echo "Waiting for API $(API_DOC_URL) ..."
-	@for i in {1..120}; do \
+	@for i in {1..180}; do \
 		curl -fsS "$(API_DOC_URL)" >/dev/null 2>&1 && echo "API reachable" && exit 0; \
 		sleep 2; \
 	done; \
@@ -58,9 +90,19 @@ wait-api:
 	$(DC) logs --no-color --tail=300; \
 	exit 1
 
+wait-ui:
+	@echo "Waiting for UI $(BASE_URL) ..."
+	@for i in {1..180}; do \
+		curl -fsS "$(BASE_URL)" >/dev/null 2>&1 && echo "UI reachable" && exit 0; \
+		sleep 2; \
+	done; \
+	echo "UI not reachable"; \
+	$(DC) logs --no-color --tail=300; \
+	exit 1
+
 wait-db:
 	@echo "Waiting for DB $(DB_SERVICE) ..."
-	@for i in {1..60}; do \
+	@for i in {1..120}; do \
 		$(DC) exec -T $(DB_SERVICE) sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1 && echo "DB ready" && exit 0; \
 		sleep 2; \
 	done; \
@@ -87,10 +129,19 @@ verify-seed:
 rfbrowser-init:
 	rfbrowser init
 
-smoke: rfbrowser-init
-	BASE_URL="$(BASE_URL)" robot --outputdir "$(ARTIFACTS)/smoke" --include "$(SMOKE_TAG)" "$(TEST_ROOT)"
+ui-smoke: rfbrowser-init wait-ui
+	@mkdir -p "$(UI_ARTIFACTS)/smoke"
+	BASE_URL="$(BASE_URL)" HEADLESS="$(HEADLESS)" \
+	robot --outputdir "$(UI_ARTIFACTS)/smoke" --include "$(SMOKE_TAG)" "$(TEST_ROOT)"
 
-regression: rfbrowser-init
-	BASE_URL="$(BASE_URL)" robot --outputdir "$(ARTIFACTS)/regression" --include "$(REG_TAG)" "$(TEST_ROOT)"
+ui-regression: rfbrowser-init wait-ui
+	@mkdir -p "$(UI_ARTIFACTS)/regression"
+	BASE_URL="$(BASE_URL)" HEADLESS="$(HEADLESS)" \
+	robot --outputdir "$(UI_ARTIFACTS)/regression" --include "$(REG_TAG)" "$(TEST_ROOT)"
+
+# If you also have API targets in your repo, you can wire them here.
+# For now we keep "smoke/regression" mapped to UI, because that’s what you run most often.
+smoke: ui-smoke
+regression: ui-regression
 
 test-all: up seed smoke regression
