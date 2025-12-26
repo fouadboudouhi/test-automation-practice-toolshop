@@ -10,12 +10,6 @@ concurrency:
   group: ui-tests-${{ github.ref }}
   cancel-in-progress: true
 
-# Runs Toolshop via Docker and executes:
-# - API tests (pytest) if api-tests/ exists (otherwise skipped)
-# - UI tests (Robot Framework + Browser/Playwright)
-#
-# CI uses a compose override that publishes RANDOM host ports to avoid collisions.
-
 jobs:
   smoke:
     name: Smoke (QGate)
@@ -37,13 +31,55 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Debug repo tree (top-level)
+      - name: Debug repo tree
         shell: bash
         run: |
           set -euo pipefail
           ls -la
-          echo "--- dirs (maxdepth 2) ---"
-          find . -maxdepth 2 -type d -print
+          echo "--- dirs (maxdepth 3) ---"
+          find . -maxdepth 3 -type d -print
+
+      - name: Resolve test roots (API/UI)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          pick_dir () {
+            local label="$1"; shift
+            for d in "$@"; do
+              if [[ -d "$d" ]]; then
+                echo "$d"
+                return 0
+              fi
+            done
+            echo ""
+            return 0
+          }
+
+          API_ROOT="$(pick_dir api \
+            "api-tests" "api_tests" \
+            "tests/api-tests" "tests/api_tests" "tests/api" "tests/api-tests/tests" \
+          )"
+          UI_ROOT="$(pick_dir ui \
+            "ui-tests" "ui_tests" \
+            "tests/ui-tests" "tests/ui_tests" "tests/ui" \
+          )"
+
+          if [[ -z "${API_ROOT}" ]]; then
+            echo "ERROR: API tests directory not found. Checked: api-tests, api_tests, tests/api, tests/api-tests, tests/api_tests"
+            exit 2
+          fi
+          if [[ -z "${UI_ROOT}" ]]; then
+            echo "ERROR: UI tests directory not found. Checked: ui-tests, ui_tests, tests/ui, tests/ui-tests, tests/ui_tests"
+            exit 2
+          fi
+
+          echo "API_TEST_ROOT=${API_ROOT}" >> "$GITHUB_ENV"
+          echo "UI_TEST_ROOT=${UI_ROOT}" >> "$GITHUB_ENV"
+
+          echo "Resolved:"
+          echo "  API_TEST_ROOT=${API_ROOT}"
+          echo "  UI_TEST_ROOT=${UI_ROOT}"
 
       - name: Create docker-compose CI override (random host ports)
         shell: bash
@@ -80,10 +116,6 @@ jobs:
 
           echo "API_DOC_URL=http://localhost:${WEB_PORT}/api/documentation" >> "$GITHUB_ENV"
           echo "BASE_URL=http://localhost:${UI_PORT}" >> "$GITHUB_ENV"
-
-          echo "Detected:"
-          echo "  API_DOC_URL=http://localhost:${WEB_PORT}/api/documentation"
-          echo "  BASE_URL=http://localhost:${UI_PORT}"
 
       - name: Wait for API docs endpoint
         shell: bash
@@ -122,7 +154,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "Seeding in ${API_SERVICE}: ${SEED_CMD}"
           docker compose -p "${COMPOSE_PROJECT_NAME}" -f "${COMPOSE_FILE}" -f docker/docker-compose.ci.yml exec -T "${API_SERVICE}" ${SEED_CMD}
 
       - name: Verify seed (product count > 0)
@@ -133,13 +164,7 @@ jobs:
             php artisan tinker --execute='echo \App\Models\Product::count();' || true)"
           COUNT="$(echo "${OUT}" | tr -dc '0-9' || true)"
           echo "Product count: ${COUNT}"
-          if [[ -z "${COUNT}" || "${COUNT}" -le 0 ]]; then
-            echo "Seed verification failed ❌"
-            echo "${OUT}"
-            docker compose -p "${COMPOSE_PROJECT_NAME}" -f "${COMPOSE_FILE}" -f docker/docker-compose.ci.yml logs --no-color | tail -n 500
-            exit 1
-          fi
-          echo "Seed verification OK ✅"
+          [[ -n "${COUNT}" && "${COUNT}" -gt 0 ]]
 
       - name: Wait for UI
         shell: bash
@@ -177,37 +202,18 @@ jobs:
           pip install -r requirements.txt
           rfbrowser init
 
-      - name: Run API Smoke (pytest) (optional)
+      - name: Run API Smoke (pytest) (required)
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts/api/smoke
+          pytest -q -m "smoke" --junitxml="artifacts/api/smoke/junit.xml" "${API_TEST_ROOT}"
 
-          if [[ -d "api-tests" ]]; then
-            pytest -q -m "smoke" --junitxml="artifacts/api/smoke/junit.xml" "api-tests"
-          elif [[ -d "api_tests" ]]; then
-            pytest -q -m "smoke" --junitxml="artifacts/api/smoke/junit.xml" "api_tests"
-          else
-            echo "No API tests directory found (api-tests / api_tests). Skipping API smoke."
-            echo "<testsuite name='api-smoke' tests='0'/>" > artifacts/api/smoke/junit.xml
-          fi
-
-      - name: Run UI Smoke (Robot) (QGate)
+      - name: Run UI Smoke (Robot) (required)
         shell: bash
         run: |
           set -euo pipefail
-
-          if [[ -d "ui-tests" ]]; then
-            UI_ROOT="ui-tests"
-          elif [[ -d "ui_tests" ]]; then
-            UI_ROOT="ui_tests"
-          else
-            echo "UI tests directory not found (ui-tests / ui_tests)."
-            ls -la
-            exit 252
-          fi
-
-          robot --outputdir artifacts/ui/smoke --include smoke "${UI_ROOT}"
+          robot --outputdir artifacts/ui/smoke --include smoke "${UI_TEST_ROOT}"
 
       - name: Upload Smoke artifacts
         if: always()
@@ -250,13 +256,43 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Debug repo tree (top-level)
+      - name: Resolve test roots (API/UI)
         shell: bash
         run: |
           set -euo pipefail
-          ls -la
-          echo "--- dirs (maxdepth 2) ---"
-          find . -maxdepth 2 -type d -print
+
+          pick_dir () {
+            local label="$1"; shift
+            for d in "$@"; do
+              if [[ -d "$d" ]]; then
+                echo "$d"
+                return 0
+              fi
+            done
+            echo ""
+            return 0
+          }
+
+          API_ROOT="$(pick_dir api \
+            "api-tests" "api_tests" \
+            "tests/api-tests" "tests/api_tests" "tests/api" \
+          )"
+          UI_ROOT="$(pick_dir ui \
+            "ui-tests" "ui_tests" \
+            "tests/ui-tests" "tests/ui_tests" "tests/ui" \
+          )"
+
+          if [[ -z "${API_ROOT}" ]]; then
+            echo "ERROR: API tests directory not found."
+            exit 2
+          fi
+          if [[ -z "${UI_ROOT}" ]]; then
+            echo "ERROR: UI tests directory not found."
+            exit 2
+          fi
+
+          echo "API_TEST_ROOT=${API_ROOT}" >> "$GITHUB_ENV"
+          echo "UI_TEST_ROOT=${UI_ROOT}" >> "$GITHUB_ENV"
 
       - name: Create docker-compose CI override (random host ports)
         shell: bash
@@ -294,44 +330,34 @@ jobs:
           echo "API_DOC_URL=http://localhost:${WEB_PORT}/api/documentation" >> "$GITHUB_ENV"
           echo "BASE_URL=http://localhost:${UI_PORT}" >> "$GITHUB_ENV"
 
-      - name: Wait for API + DB + seed + UI
+      - name: Wait + Seed + UI
         shell: bash
         run: |
           set -euo pipefail
 
           echo "Waiting for API docs on ${API_DOC_URL} ..."
-          ok=false
           for i in {1..180}; do
-            if curl -fsS "${API_DOC_URL}" >/dev/null 2>&1; then ok=true; break; fi
+            curl -fsS "${API_DOC_URL}" >/dev/null 2>&1 && break
             sleep 2
           done
-          $ok || (echo "API not ready" && docker compose -p "${COMPOSE_PROJECT_NAME}" -f "${COMPOSE_FILE}" -f docker/docker-compose.ci.yml logs --no-color | tail -n 500 && exit 1)
 
           echo "Waiting for DB (${DB_SERVICE}) ..."
-          ok=false
           for i in {1..120}; do
             if docker compose -p "${COMPOSE_PROJECT_NAME}" -f "${COMPOSE_FILE}" -f docker/docker-compose.ci.yml exec -T "${DB_SERVICE}" \
-              sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then ok=true; break; fi
+              sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
+              break
+            fi
             sleep 2
           done
-          $ok || (echo "DB not ready" && docker compose -p "${COMPOSE_PROJECT_NAME}" -f "${COMPOSE_FILE}" -f docker/docker-compose.ci.yml logs --no-color | tail -n 500 && exit 1)
 
-          echo "Seeding in ${API_SERVICE}: ${SEED_CMD}"
           docker compose -p "${COMPOSE_PROJECT_NAME}" -f "${COMPOSE_FILE}" -f docker/docker-compose.ci.yml exec -T "${API_SERVICE}" ${SEED_CMD}
 
-          OUT="$(docker compose -p "${COMPOSE_PROJECT_NAME}" -f "${COMPOSE_FILE}" -f docker/docker-compose.ci.yml exec -T "${API_SERVICE}" \
-            php artisan tinker --execute='echo \App\Models\Product::count();' || true)"
-          COUNT="$(echo "${OUT}" | tr -dc '0-9' || true)"
-          echo "Product count: ${COUNT}"
-          [[ -n "${COUNT}" && "${COUNT}" -gt 0 ]] || (echo "Seed verification failed" && exit 1)
-
           echo "Waiting for UI on ${BASE_URL} ..."
-          ok=false
           for i in {1..180}; do
-            if curl -fsS "${BASE_URL}" >/dev/null 2>&1; then ok=true; break; fi
+            curl -fsS "${BASE_URL}" >/dev/null 2>&1 && exit 0
             sleep 2
           done
-          $ok || (echo "UI not reachable" && docker compose -p "${COMPOSE_PROJECT_NAME}" -f "${COMPOSE_FILE}" -f docker/docker-compose.ci.yml logs --no-color | tail -n 500 && exit 1)
+          exit 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -353,39 +379,18 @@ jobs:
           pip install -r requirements.txt
           rfbrowser init
 
-      # Best practice: run UI regression even if API regression fails (more signal per CI run).
-      - name: Run API Regression (pytest) (optional, non-blocking)
-        continue-on-error: true
+      - name: Run API Regression (pytest) (required)
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts/api/regression
+          pytest -q -m "regression" --junitxml="artifacts/api/regression/junit.xml" "${API_TEST_ROOT}"
 
-          if [[ -d "api-tests" ]]; then
-            pytest -q -m "regression" --junitxml="artifacts/api/regression/junit.xml" "api-tests"
-          elif [[ -d "api_tests" ]]; then
-            pytest -q -m "regression" --junitxml="artifacts/api/regression/junit.xml" "api_tests"
-          else
-            echo "No API tests directory found (api-tests / api_tests). Skipping API regression."
-            echo "<testsuite name='api-regression' tests='0'/>" > artifacts/api/regression/junit.xml
-          fi
-
-      - name: Run UI Regression (Robot)
+      - name: Run UI Regression (Robot) (required)
         shell: bash
         run: |
           set -euo pipefail
-
-          if [[ -d "ui-tests" ]]; then
-            UI_ROOT="ui-tests"
-          elif [[ -d "ui_tests" ]]; then
-            UI_ROOT="ui_tests"
-          else
-            echo "UI tests directory not found (ui-tests / ui_tests)."
-            ls -la
-            exit 252
-          fi
-
-          robot --outputdir artifacts/ui/regression --include regression "${UI_ROOT}"
+          robot --outputdir artifacts/ui/regression --include regression "${UI_TEST_ROOT}"
 
       - name: Upload Regression artifacts
         if: always()
