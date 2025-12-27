@@ -20,7 +20,7 @@ on:
           - all
 
 concurrency:
-  group: ci-load-${{ github.ref }}
+  group: ci-load-${{ github.ref }}-${{ github.event_name }}-${{ github.event.schedule || inputs.scenario || 'push' }}
   cancel-in-progress: true
 
 jobs:
@@ -31,14 +31,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: ${{ fromJSON(
-          github.event_name == 'push' && '["smoke"]' ||
-          (github.event_name == 'schedule' && github.event.schedule == '0 2 * * *') && '["ramp","peak"]' ||
-          (github.event_name == 'schedule' && github.event.schedule == '0 2 * * 1') && '["soak"]' ||
-          (github.event_name == 'workflow_dispatch' && inputs.scenario == 'all') && '["smoke","ramp","peak","soak"]' ||
-          (github.event_name == 'workflow_dispatch') && format('["{0}"]', inputs.scenario) ||
-          '["smoke"]'
-        ) }}
+        scenario: >-
+          ${{ fromJSON(
+            (github.event_name == 'push' && '["smoke"]') ||
+            ((github.event_name == 'schedule' && github.event.schedule == '0 2 * * *') && '["ramp","peak"]') ||
+            ((github.event_name == 'schedule' && github.event.schedule == '0 2 * * 1') && '["soak"]') ||
+            ((github.event_name == 'workflow_dispatch' && inputs.scenario == 'all') && '["smoke","ramp","peak","soak"]') ||
+            ((github.event_name == 'workflow_dispatch') && format('["{0}"]', inputs.scenario)) ||
+            '["smoke"]'
+          ) }}
 
     env:
       WEB_PORT: "8091"
