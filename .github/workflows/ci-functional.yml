@@ -1,4 +1,4 @@
-name: CI (Functional: Smoke + Regression)
+name: CI (Functional)
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: functional-ci-${{ github.ref }}
+  group: ci-functional-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -20,10 +20,8 @@ jobs:
       WEB_PORT: "8091"
       UI_PORT: "4200"
       HEADLESS: "true"
-
       DEMO_EMAIL: customer@practicesoftwaretesting.com
       DEMO_PASSWORD: welcome01
-
       COMPOSE_FILE: docker/docker-compose.yml
       COMPOSE_PROJECT_NAME: toolshop-ci-${{ github.run_id }}-${{ github.run_attempt }}-smoke
 
@@ -37,7 +35,7 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install Python deps
+      - name: Install Python deps + init Browser
         shell: bash
         run: |
           set -euo pipefail
@@ -61,8 +59,8 @@ jobs:
           name: artifacts-functional-smoke-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts
 
-      - name: Docker logs (only on failure)
-        if: failure()
+      - name: Docker logs (always)
+        if: always()
         shell: bash
         run: |
           make logs || true
@@ -83,10 +81,8 @@ jobs:
       WEB_PORT: "8091"
       UI_PORT: "4200"
       HEADLESS: "true"
-
       DEMO_EMAIL: customer@practicesoftwaretesting.com
       DEMO_PASSWORD: welcome01
-
       COMPOSE_FILE: docker/docker-compose.yml
       COMPOSE_PROJECT_NAME: toolshop-ci-${{ github.run_id }}-${{ github.run_attempt }}-regression
 
@@ -100,7 +96,7 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install Python deps
+      - name: Install Python deps + init Browser
         shell: bash
         run: |
           set -euo pipefail
@@ -124,8 +120,8 @@ jobs:
           name: artifacts-functional-regression-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts
 
-      - name: Docker logs (only on failure)
-        if: failure()
+      - name: Docker logs (always)
+        if: always()
         shell: bash
         run: |
           make logs || true
