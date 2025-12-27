@@ -73,7 +73,7 @@ def test_product_details_for_first_item(http: requests.Session, sample_product_d
     assert r.status_code == 200
     assert "json" in (r.headers.get("content-type", "").lower())
     data = r.json()
-    assert isinstance(data, dict | list)
+    assert isinstance(data, (dict, list))
 
 
 @pytest.mark.smoke

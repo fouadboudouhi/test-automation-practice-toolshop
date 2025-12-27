@@ -1,14 +1,14 @@
 *** Settings ***
 Documentation     Regression test for category filtering.
 Resource          ../../resources/keywords/common.robot
-Test Setup       Open Toolshop
-Test Teardown    Close Toolshop
 
 *** Test Cases ***
 Filter Products By Category
     [Tags]    regression
+    Open Toolshop
     Click    css=[data-test^="category-"] >> nth=0
     Wait Until Keyword Succeeds    10s    500ms    Filtered Results Should Exist
+    Close Toolshop
 
 *** Keywords ***
 Filtered Results Should Exist

@@ -1,7 +1,5 @@
 # Toolshop – UI/API Test-Automation (Docker + Robot + Pytest)
 
-[![UI Tests](https://github.com/fouadboudouhi/test-automation-practice-toolshop/actions/workflows/ci-ui-tests.yml/badge.svg?branch=main)](https://github.com/fouadboudouhi/test-automation-practice-toolshop/actions/workflows/ci-ui-tests.yml)
-
 Dieses Repo startet die **Practice Software Testing**-Demo via **Docker Compose** und führt darauf **UI-Tests (Robot Framework + Browser/Playwright)** sowie **API-Tests (pytest + requests)** aus – lokal und in CI.
 
 ## System-Überblick (ASCII)
@@ -49,6 +47,13 @@ Robot UI Tests ─────▶│  │ angular-ui   │ 4200   │ web (nginx
 
 ---
 
+## Docker Images (Reproducibility)
+
+Für reproduzierbare Runs sind die beiden Testsmith-Images (API/UI) in `docker/docker-compose.yml` per **Digest** gepinnt.
+Wenn du auf eine neuere Version upgraden willst, ersetze den Digest (z. B. aus Docker Hub „Layers“-Seite / `docker pull` + `docker inspect`).
+
+---
+
 ## Quickstart (lokal)
 
 ```bash
@@ -90,8 +95,8 @@ make up           # Docker Stack starten
 make down         # Stack stoppen (Volumes behalten)
 make clean        # Stack stoppen + Volumes löschen
 make seed         # DB migrieren + seeden + verifizieren
-make smoke        # Smoke-Tests (API + UI) ausführen
-make regression   # Regression-Tests (API + UI) ausführen
+make smoke        # Smoke-Tests (Tags) ausführen
+make regression   # Regression-Tests (Tags) ausführen
 make test-all     # up -> seed -> smoke -> regression
 make logs         # Stack logs
 make ps           # docker compose ps
@@ -107,7 +112,7 @@ Diese Werte kannst du (lokal/CI) überschreiben:
 - `BASE_URL` (Default: `http://localhost:4200`)
 - `API_HOST` (Default: `http://localhost:8091`)
 - `API_DOCS_URL` (Default: `http://localhost:8091/api/documentation`)
-- *(deprecated alias)* `API_DOC_URL` → same as `API_DOCS_URL`
+- `API_DOC_URL` (deprecated alias)
 - `HEADLESS` (`true/false`)
 - `DEMO_EMAIL`, `DEMO_PASSWORD`
 - `ARTIFACTS` (z. B. `artifacts`)
@@ -128,13 +133,19 @@ BASE_URL=http://localhost:4200 HEADLESS=false make smoke
   - `smoke/` – UI Smoke Suites
   - `regression/` – UI Regression Suites
   - `resources/` – gemeinsame Keywords/Variablen
-- `api-tests/`
-  - `tests/smoke/`
-  - `tests/regression/`
+- `tests/api/`
+  - `smoke/`
+  - `regression/`
 
----
+## Quality / Security (CI)
+
+Zusätzlich zu den Test-Jobs gibt es:
+- `Quality Gates` Workflow (`.github/workflows/quality.yml`): ruff lint, ruff format check, mypy, pip-audit
+- `Dependency Review` Workflow (`.github/workflows/dependency-review.yml`): blockt riskante Dependency-Änderungen in PRs
+- `Dependabot` (`.github/dependabot.yml`): wöchentliche Updates für Python + GitHub Actions
 
 ## Troubleshooting
+
 
 ### “Bind for 0.0.0.0:3306 failed: port is already allocated”
 Auf deinem Host läuft bereits MySQL/MariaDB oder ein anderer Stack nutzt den Port.
@@ -162,7 +173,7 @@ Lösung: `make seed` sicherstellen und in Tests nur **gezielte Waits** verwenden
 
 ## CI
 
-Die GitHub Actions Workflow-Datei (`ci-tests/ui.yml`) führt aus:
+Die GitHub Actions Workflow-Datei (`ci-ui-tests.yml`) führt aus:
 
 - **Smoke** als Gate (muss grün sein)
 - **Regression** nur wenn Smoke erfolgreich war

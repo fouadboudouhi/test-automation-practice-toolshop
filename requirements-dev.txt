@@ -1,0 +1,7 @@
+# Dev / CI tooling (kept separate from runtime test deps)
+pre-commit
+ruff
+mypy
+types-requests
+pytest-cov
+pip-audit

@@ -42,7 +42,7 @@ def _first_identifier(items):
             continue
         for k in ("id", "uuid", "ulid", "slug", "code"):
             v = it.get(k)
-            if isinstance(v, str | int) and str(v).strip():
+            if isinstance(v, (str, int)) and str(v).strip():
                 return str(v).strip()
     return None
 
@@ -225,7 +225,7 @@ def sample_product_identifier(
     candidates = []
     for k in ("id", "slug", "uuid", "ulid", "code"):
         v = sample_product.get(k)
-        if isinstance(v, str | int) and str(v).strip():
+        if isinstance(v, (str, int)) and str(v).strip():
             candidates.append(str(v).strip())
 
     if not candidates:

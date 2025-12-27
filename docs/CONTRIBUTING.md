@@ -16,7 +16,7 @@ Checklist:
 ## Adding API tests (Pytest)
 
 Checklist:
-1) Place under `tests/api/tests/smoke/` or `tests/api/tests/regression/`
+1) Place under `tests/api/smoke/` or `tests/api/regression/`
 2) Mark with `@pytest.mark.smoke` / `@pytest.mark.regression`
 3) Prefer fixtures from `tests/api/conftest.py`
 
@@ -33,3 +33,17 @@ Keep it short and action-oriented:
 - `ui: fix no-results search assertion`
 - `ci: randomize ports to avoid conflicts`
 - `api: add openapi-driven regression checks`
+
+
+## Local quality checks
+
+Recommended once:
+```bash
+python -m pip install -r requirements.txt -r requirements-dev.txt
+pre-commit install
+```
+
+Then before commits (or anytime):
+```bash
+pre-commit run -a
+```

@@ -2,7 +2,10 @@
 
 This repo uses GitHub Actions to run UI tests against a Dockerized stack.
 
-Workflow: `.github/workflows/ci-tests/ui.yml`
+Workflows:
+- `ci-ui-tests.yml` (Docker stack + Smoke/Regression)
+- `quality.yml` (lint/format/typecheck/security)
+- `dependency-review.yml` (GitHub dependency review on PRs)
 
 ---
 
@@ -32,7 +35,9 @@ Then CI detects the mapped ports using:
 - `docker compose port angular-ui 4200`
 
 And exports:
-- `API_HOST / API_DOCS_URL=http://localhost:<web_port>/api/documentation`
+- `API_HOST=http://localhost:<web_port>`
+- `API_DOCS_URL=http://localhost:<web_port>/api/documentation`
+- `API_DOC_URL=http://localhost:<web_port>/api/documentation` (deprecated alias)
 - `BASE_URL=http://localhost:<ui_port>`
 
 This prevents conflicts across jobs and makes the workflow more robust.
@@ -68,3 +73,13 @@ Always inspect uploaded Robot artifacts:
 - `log.html` is the first stop
 - `report.html` gives the suite overview
 - `output.xml` is machine-readable
+
+
+---
+
+## Coverage gate (API)
+
+CI runs API smoke/regression with `pytest-cov` and enforces a minimal coverage threshold (`--cov-fail-under`).
+Coverage XML is uploaded with the other artifacts under:
+- `artifacts/api/smoke/coverage.xml`
+- `artifacts/api/regression/coverage.xml`

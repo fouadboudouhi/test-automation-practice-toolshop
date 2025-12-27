@@ -1,8 +1,6 @@
 *** Settings ***
 Documentation     Regression: two different products have different titles on the listing.
 Resource          ../../resources/keywords/common.robot
-Test Setup       Open Toolshop
-Test Teardown    Close Toolshop
 Suite Setup       Open Toolshop
 
 *** Test Cases ***

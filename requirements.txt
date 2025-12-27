@@ -1,7 +1,5 @@
-# Core test dependencies
 robotframework
 robotframework-browser
-pytest==9.0.2
-requests==2.32.5
-allure-pytest==2.15.2
-playwright==1.57.0  # used by robotframework-browser
+pytest
+requests
+allure-pytest

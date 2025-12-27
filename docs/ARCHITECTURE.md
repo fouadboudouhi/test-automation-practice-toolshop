@@ -33,14 +33,14 @@ The UI and API are served behind a single predictable endpoint in local runs, an
 
 ### UI tests (Robot Framework)
 - Tooling: Robot Framework + `robotframework-browser` (Playwright)
-- Location: `tests/ui/`
+- Location: `ui-tests/`
 - Tagging:
   - `smoke` → fast checks used as a gate
   - `regression` → deeper coverage
 
 ### API tests (Pytest)
 - Tooling: Pytest + `requests`
-- Location: `tests/api/`
+- Location: `api-tests/`
 - Tagging:
   - `smoke` → fast endpoint sanity checks
   - `regression` → deeper contract-like checks driven by OpenAPI

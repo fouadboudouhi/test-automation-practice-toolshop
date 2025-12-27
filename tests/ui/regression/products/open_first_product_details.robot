@@ -1,8 +1,6 @@
 *** Settings ***
 Documentation     Regression: open first product details from product listing (home).
 Resource          ../../resources/keywords/common.robot
-Test Setup       Open Toolshop
-Test Teardown    Close Toolshop
 Suite Setup       Open Toolshop
 
 *** Test Cases ***

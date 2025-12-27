@@ -16,6 +16,13 @@ make seed
 ```bash
 make ui-smoke
 make ui-regression
+
+API:
+make api-smoke
+make api-regression
+
+API mit Coverage (optional):
+COV=true make api-smoke
 ```
 
 Or via the convenience targets:
@@ -33,19 +40,21 @@ make test-all
 
 ## Folder structure
 
+
 ### UI tests
 - `tests/ui/`
-  - `tests/ui/resources/` — shared variables + keywords (single source of truth)
-  - `tests/ui/smoke/` — smoke suites
-  - `tests/ui/regression/` — regression suites (by feature area)
+  - `resources/` — shared variables + keywords (single source of truth)
+  - `smoke/` — smoke suites
+  - `regression/` — regression suites (by feature area)
 
 ### API tests
 - `tests/api/`
-  - `tests/api/tests/smoke/`
-  - `tests/api/tests/regression/`
-  - `tests/api/conftest.py` — fixtures and shared helpers
+  - `smoke/`
+  - `regression/`
+  - `conftest.py` — fixtures and shared helpers
 
 ---
+
 
 ## Naming conventions
 
@@ -82,3 +91,4 @@ make test-all
 
 ### API (Pytest)
 - `artifacts/api/<suite>/junit.xml`
+- optional coverage: `artifacts/api/<suite>/coverage.xml` (when run with `COV=true` or in CI)
