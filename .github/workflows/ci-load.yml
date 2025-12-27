@@ -17,6 +17,7 @@ on:
           - ramp
           - peak
           - soak
+          - all
 
 concurrency:
   group: ci-load-${{ github.ref }}
@@ -24,17 +25,31 @@ concurrency:
 
 jobs:
   k6:
-    name: k6
+    name: k6 (${{ matrix.scenario }})
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: ${{ fromJSON(
+          github.event_name == 'push' && '["smoke"]' ||
+          (github.event_name == 'schedule' && github.event.schedule == '0 2 * * *') && '["ramp","peak"]' ||
+          (github.event_name == 'schedule' && github.event.schedule == '0 2 * * 1') && '["soak"]' ||
+          (github.event_name == 'workflow_dispatch' && inputs.scenario == 'all') && '["smoke","ramp","peak","soak"]' ||
+          (github.event_name == 'workflow_dispatch') && format('["{0}"]', inputs.scenario) ||
+          '["smoke"]'
+        ) }}
 
     env:
       WEB_PORT: "8091"
       UI_PORT: "4200"
       HEADLESS: "true"
+
       DEMO_EMAIL: customer@practicesoftwaretesting.com
       DEMO_PASSWORD: welcome01
+
       COMPOSE_FILE: docker/docker-compose.yml
-      COMPOSE_PROJECT_NAME: toolshop-ci-${{ github.run_id }}-${{ github.run_attempt }}-k6
+      COMPOSE_PROJECT_NAME: toolshop-ci-${{ github.run_id }}-${{ github.run_attempt }}-k6-${{ matrix.scenario }}
 
     steps:
       - name: Checkout
@@ -50,45 +65,17 @@ jobs:
           make up
           make seed
 
-      - name: Run k6 (push main => smoke)
-        if: github.event_name == 'push'
+      - name: Run k6
         shell: bash
         run: |
           set -euo pipefail
-          make k6-smoke
-
-      - name: Run k6 (nightly => ramp + peak)
-        if: github.event_name == 'schedule' && github.event.schedule == '0 2 * * *'
-        shell: bash
-        run: |
-          set -euo pipefail
-          make k6-ramp
-          make k6-peak
-
-      - name: Run k6 (weekly => soak)
-        if: github.event_name == 'schedule' && github.event.schedule == '0 2 * * 1'
-        shell: bash
-        run: |
-          set -euo pipefail
-          make k6-soak
-
-      - name: Run k6 (manual)
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          set -euo pipefail
-          case "${{ inputs.scenario }}" in
-            smoke) make k6-smoke ;;
-            ramp)  make k6-ramp ;;
-            peak)  make k6-peak ;;
-            soak)  make k6-soak ;;
-          esac
+          make "k6-${{ matrix.scenario }}"
 
       - name: Upload artifacts (always)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: artifacts-k6-${{ github.run_id }}-${{ github.run_attempt }}
+          name: artifacts-k6-${{ matrix.scenario }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts
 
       - name: Docker logs (always)
