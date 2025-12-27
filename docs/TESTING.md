@@ -1,94 +1,52 @@
 # Testing
 
-## Run tests locally
+## Schnellstart
 
-### 1) Start the stack
-```bash
-make up
-```
-
-### 2) Seed DB (required for stable UI runs)
-```bash
-make seed
-```
-
-### 3) UI smoke / regression
-```bash
-make ui-smoke
-make ui-regression
-
-API:
-make api-smoke
-make api-regression
-
-API mit Coverage (optional):
-COV=true make api-smoke
-```
-
-Or via the convenience targets:
-```bash
-make smoke
-make regression
-```
-
-### 4) Full pipeline
 ```bash
 make test-all
 ```
 
----
+Das startet den Docker-Stack, seeded die DB und führt Smoke + Regression aus.
 
-## Folder structure
+## Wichtige Targets
 
+- Stack:
+  - `make up` / `make down` / `make clean`
+- Seed:
+  - `make seed`
+- API:
+  - `make api-smoke`
+  - `make api-regression`
+- UI:
+  - `make ui-smoke`
+  - `make ui-regression`
 
-### UI tests
-- `tests/ui/`
-  - `resources/` — shared variables + keywords (single source of truth)
-  - `smoke/` — smoke suites
-  - `regression/` — regression suites (by feature area)
+## Headless / Debug
 
-### API tests
-- `tests/api/`
-  - `smoke/`
-  - `regression/`
-  - `conftest.py` — fixtures and shared helpers
+UI-Tests im sichtbaren Browser:
 
----
+```bash
+HEADLESS=false make ui-regression
+```
 
+## Reports / Logs
 
-## Naming conventions
+UI-Reports findest du pro Lauf in:
 
-### Robot Framework
-- Suite files: `*.robot` named after behavior (e.g. `search_no_results.robot`)
-- Keyword naming: **verb-first**, readable (e.g. `Open Toolshop`, `Wait Until Toolshop Ready`)
-- Prefer selectors using `data-test` attributes.
+- `artifacts/ui/smoke/run-XXX/`
+- `artifacts/ui/regression/run-XXX/`
 
-### Pytest
-- Test file: `test_*.py`
-- Test function: `test_*`
-- Fixtures: stable names, no hidden global state
+Wichtige Dateien:
+- `report.html`, `log.html`, `output.xml`
 
----
+API-Reports:
+- JUnit XML unter `artifacts/api/.../junit.xml`
 
-## Flakiness rules
+## Bekannte App-Route
 
-1) No blind `Sleep` unless you can justify it.
-2) Use explicit readiness gates:
-   - UI: `Wait Until Toolshop Ready`
-   - Product list: `Wait For At Least One Product Card`
-3) Retries are allowed only around known-slow UI transitions (`Wait Until Keyword Succeeds`), not to “hide” real issues.
-4) Always capture artifacts on failure (Robot `Register Keyword To Run On Failure`).
+Der Warenkorb/Checkout ist in dieser App unter:
 
----
+- `/checkout`
 
-## Reports & artifacts
-
-### UI (Robot)
-- `artifacts/ui/<suite>/log.html`
-- `artifacts/ui/<suite>/report.html`
-- `artifacts/ui/<suite>/output.xml`
-- screenshots in `artifacts/ui/<suite>/screenshots/`
-
-### API (Pytest)
-- `artifacts/api/<suite>/junit.xml`
-- optional coverage: `artifacts/api/<suite>/coverage.xml` (when run with `COV=true` or in CI)
+Die gemeinsamen UI-Keywords (Navigation dorthin, Selektoren, etc.) sind in:
+- `tests/ui/resources/keywords/common.robot`

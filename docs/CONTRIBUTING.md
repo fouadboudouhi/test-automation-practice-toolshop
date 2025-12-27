@@ -1,49 +1,55 @@
 # Contributing
 
-## Adding UI tests (Robot Framework)
+## Voraussetzungen
 
-Checklist:
-1) Put the suite under:
-   - `tests/ui/smoke/` for fast gate checks, or
-   - `tests/ui/regression/` for deeper coverage
-2) Tag the test:
-   - `[Tags]    smoke` or `[Tags]    regression`
-3) Use `data-test` selectors where possible.
-4) Use shared keywords from `tests/ui/resources/` instead of duplicating logic.
-5) No raw `Sleep` unless absolutely necessary (prefer readiness keywords).
-6) Ensure artifacts are helpful on failure (screenshots, logs).
+- Docker Desktop (oder Docker Engine + Compose)
+- Python (empfohlen: 3.11+)
+- Node ist **nicht** nötig (UI kommt als Container)
+- Robot Framework + Browser Library (kommt über `requirements.txt`)
 
-## Adding API tests (Pytest)
+## Setup (lokal)
 
-Checklist:
-1) Place under `tests/api/smoke/` or `tests/api/regression/`
-2) Mark with `@pytest.mark.smoke` / `@pytest.mark.regression`
-3) Prefer fixtures from `tests/api/conftest.py`
-
-## PR rules (pragmatic)
-
-Before opening a PR:
-- `make smoke` passes locally
-- If you touched selectors, you validated them with a real run
-- New tests are tagged and placed in correct folders
-- Any new env vars are documented in `README.md`
-
-## Commit messages
-Keep it short and action-oriented:
-- `ui: fix no-results search assertion`
-- `ci: randomize ports to avoid conflicts`
-- `api: add openapi-driven regression checks`
-
-
-## Local quality checks
-
-Recommended once:
 ```bash
-python -m pip install -r requirements.txt -r requirements-dev.txt
-pre-commit install
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+rfbrowser init
 ```
 
-Then before commits (or anytime):
+## Tests ausführen
+
+Alles über das Makefile:
+
 ```bash
-pre-commit run -a
+make test-all
 ```
+
+Oder separat:
+
+```bash
+make smoke
+make regression
+make api-smoke
+make ui-smoke
+```
+
+Tipps:
+- UI sichtbar ausführen:
+  ```bash
+  HEADLESS=false make ui-smoke
+  ```
+
+## Code-Qualität (manuell)
+
+Wir nutzen keine lokalen Git-Hooks (pre-commit) als Pflicht.
+Wenn du vor einem PR lokal prüfen willst:
+
+```bash
+ruff check .
+ruff format .
+```
+
+## Artefakte
+
+Nach jedem Lauf findest du Logs/Reports unter `artifacts/`.
+Diese Ordner werden **nicht** committet.

@@ -1,72 +1,101 @@
 # =========================================================
-# Python
+# Python / Bytecode
 # =========================================================
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 
+# =========================================================
 # Virtual environments
+# =========================================================
 .venv/
 venv/
 env/
-
+.conda/
 
 # =========================================================
-# Robot Framework execution artifacts
+# Build / packaging
 # =========================================================
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# =========================================================
+# Tool caches
+# =========================================================
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# =========================================================
+# Test artifacts (local + CI outputs)
+# Keep ALL test evidence out of git by default
+# =========================================================
+artifacts/
+test-results/
+reports/
+results/
+junit.xml
+.junit.xml
+
+# Robot Framework default outputs (if created outside artifacts/)
 output.xml
 log.html
 report.html
 
-
 # =========================================================
-# Browser Library / Playwright artifacts
+# Playwright / Robot Framework Browser Library
 # =========================================================
 browser/
 playwright-log.txt
 traces/
 trace/
 *.trace
-*.zip
+**/*.webm
 
-
-# =========================================================
-# Screenshots & videos (test evidence)
-# =========================================================
+# If screenshots/videos are written outside artifacts/
 screenshots/
 videos/
-*.png
-*.jpg
-*.jpeg
+**/screenshots/
+**/videos/
 
-
-# =========================================================
-# Allure
-# =========================================================
-allure-results/
-allure-report/
-
+# (Optional) If your tools generate these names outside artifacts
+**/robot-*.png
+**/playwright-*.png
 
 # =========================================================
-# Pytest / Coverage
-# =========================================================
-.pytest_cache/
-.coverage
-.coverage.*
-coverage.xml
-
-
-# =========================================================
-# Environment / Secrets
+# Dependency / environment
 # =========================================================
 .env
 .env.*
 credentials.env
-
+!.env.example
+!.env.template
 
 # =========================================================
-# OS / IDE
+# IDE / OS
 # =========================================================
 .DS_Store
 .idea/
 .vscode/
+
+# =========================================================
+# Local tooling / misc
+# =========================================================
+*.log
+.tmp/
+tmp/
+
+# =========================================================
+# ZIPs: DO NOT ignore globally.
+# Only ignore zips inside known artifact folders.
+# =========================================================
+artifacts/**/*.zip
+test-results/**/*.zip
+reports/**/*.zip

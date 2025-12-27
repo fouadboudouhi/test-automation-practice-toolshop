@@ -1,85 +1,38 @@
-# CI
+# CI (GitHub Actions)
 
-This repo uses GitHub Actions to run UI tests against a Dockerized stack.
+Die CI ist bewusst „lean“ gehalten und nutzt das **Makefile** als Single Source of Truth.
 
-Workflows:
-- `ci-ui-tests.yml` (Docker stack + Smoke/Regression)
-- `quality.yml` (lint/format/typecheck/security)
-- `dependency-review.yml` (GitHub dependency review on PRs)
+## Workflow
 
----
+- Datei: `.github/workflows/ci-ui-tests.yml`
+- Trigger:
+  - **Push** auf `main`
+  - **Pull Request** gegen `main`
+  - **Nightly** (geplanter Lauf)
 
-## When it runs
-- On push to `main`
-- On pull requests targeting `main`
+## Was passiert im CI-Lauf?
 
----
+1. **Checkout** des Repos
+2. **Docker-Stack starten** (Compose)
+3. **Warten**, bis API & DB bereit sind
+4. **DB migrieren + seeden** (`php artisan migrate:fresh --seed`)
+5. **Smoke-Tests ausführen**
+   - API Smoke (pytest)
+   - UI Smoke (Robot)
+6. **Regression-Tests ausführen**
+   - API Regression (pytest)
+   - UI Regression (Robot)
+7. **Artefakte uploaden** (`artifacts/`)
 
-## Gating strategy
-- **Smoke** job is the quality gate (“QGate”).
-- **Regression** runs **only if smoke succeeds**.
+> In CI werden die Artefakte immer hochgeladen, auch wenn Tests fehlschlagen (hilft bei Debugging).
 
-This keeps feedback fast and avoids burning CI time on a broken build.
+## Warum Makefile in der CI?
 
----
+- Gleiche Kommandos lokal wie in CI → weniger „works on my machine“
+- Weniger duplizierte Logik in YAML
+- Einfache Erweiterbarkeit (z. B. neue Targets)
 
-## CI design notes
+## Nightly
 
-### Port collision avoidance
-In CI, we publish **random host ports** for:
-- `web` (nginx on port 80 inside container)
-- `angular-ui` (4200 inside container)
-
-Then CI detects the mapped ports using:
-- `docker compose port web 80`
-- `docker compose port angular-ui 4200`
-
-And exports:
-- `API_HOST=http://localhost:<web_port>`
-- `API_DOCS_URL=http://localhost:<web_port>/api/documentation`
-- `API_DOC_URL=http://localhost:<web_port>/api/documentation` (deprecated alias)
-- `BASE_URL=http://localhost:<ui_port>`
-
-This prevents conflicts across jobs and makes the workflow more robust.
-
-### Database seeding
-CI always:
-1) Waits for DB healthy
-2) Runs migrations + seed
-3) Verifies product count > 0
-
----
-
-## Caching
-- Python dependencies: `actions/setup-python` with `cache: pip`
-- Playwright browsers: cached under `~/.cache/ms-playwright`
-
----
-
-## Typical CI failures and fixes
-
-### API docs endpoint never becomes reachable
-- Check docker logs from the `web` and `laravel-api` containers.
-- Often indicates DB not ready or migrations not executed.
-
-### UI reachable but tests fail on selectors/timeouts
-- Most often:
-  - seed step failed (no products → UI empty)
-  - selector mismatch (prefer `data-test`)
-  - CI slower than local (use readiness gates and targeted retries)
-
-### Artifact debugging
-Always inspect uploaded Robot artifacts:
-- `log.html` is the first stop
-- `report.html` gives the suite overview
-- `output.xml` is machine-readable
-
-
----
-
-## Coverage gate (API)
-
-CI runs API smoke/regression with `pytest-cov` and enforces a minimal coverage threshold (`--cov-fail-under`).
-Coverage XML is uploaded with the other artifacts under:
-- `artifacts/api/smoke/coverage.xml`
-- `artifacts/api/regression/coverage.xml`
+Nightly läuft denselben Smoke+Regression-Flow wie PR/Push.
+Damit findest du „flaky“ Probleme oder externe Änderungen (z. B. Image-Updates) ohne dass jemand pushen muss.

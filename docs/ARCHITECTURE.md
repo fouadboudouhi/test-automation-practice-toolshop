@@ -1,64 +1,70 @@
-# Architecture
+# Architektur (Test-Automation Toolshop)
 
-## Runtime stack (Docker)
+Dieses Repository enthält **Automatisierungstests** (API + UI) für die Toolshop-Demo-Anwendung.
+Die Anwendung selbst läuft als Docker-Stack; die Tests laufen lokal (dein Rechner) oder in GitHub Actions (CI).
 
-The application under test is started via docker-compose (see `docker/docker-compose.yml`).
+## Komponenten
 
-Typical services:
+### Docker-Stack (AUT)
+Der Stack wird über `docker/docker-compose.yml` gestartet und besteht typischerweise aus:
 
-- **mariadb**
-  - Database for the Laravel API
-  - Should be **internal only** (avoid binding 3306 to host to prevent collisions)
+- **mariadb** – Datenbank
+- **laravel-api** – Backend/API (PHP/Laravel)
+- **web (nginx)** – Reverse Proxy (u. a. für die API-Doku)
+- **angular-ui** – Frontend/UI
 
-- **laravel-api**
-  - PHP/Laravel backend
-  - Talks to `mariadb`
+> Wichtige URLs (lokal, Standardports):
+- UI: `http://localhost:4200`
+- API Docs: `http://localhost:8091/api/documentation`
 
-- **web** (nginx reverse proxy)
-  - Exposes the backend routes (e.g. `/api/documentation`) to the host
-  - Host port: `${WEB_PORT}` (default: `8091`)
-  - Example: `http://localhost:8091/api/documentation`
+### Test-Code
 
-- **angular-ui**
-  - Angular frontend
-  - Host port: `${UI_PORT}` (default: `4200`)
-  - Example: `http://localhost:4200`
+#### API-Tests (pytest)
+- Pfad: `tests/api/`
+- Framework: **pytest**
+- Marker:
+  - `smoke` – schneller Kerncheck
+  - `regression` – breiterer Umfang
 
-### Why a reverse proxy service?
-The UI and API are served behind a single predictable endpoint in local runs, and the API docs endpoint is used as a “readiness gate” for tests.
+#### UI-Tests (Robot Framework + Browser)
+- Pfad: `tests/ui/`
+- Framework: **Robot Framework**
+- Browser-Automation: **Robot Framework Browser** (Playwright)
+- Tags:
+  - `smoke`
+  - `regression`
 
----
+Gemeinsame UI-Keywords/Selektoren liegen unter:
+- `tests/ui/resources/keywords/common.robot`
 
-## Test stack overview
+## Artefakte / Reports
 
-### UI tests (Robot Framework)
-- Tooling: Robot Framework + `robotframework-browser` (Playwright)
-- Location: `ui-tests/`
-- Tagging:
-  - `smoke` → fast checks used as a gate
-  - `regression` → deeper coverage
+Testläufe schreiben nach `artifacts/`:
 
-### API tests (Pytest)
-- Tooling: Pytest + `requests`
-- Location: `api-tests/`
-- Tagging:
-  - `smoke` → fast endpoint sanity checks
-  - `regression` → deeper contract-like checks driven by OpenAPI
+- API:
+  - `artifacts/api/smoke/...`
+  - `artifacts/api/regression/...`
+- UI:
+  - `artifacts/ui/smoke/run-XXX/...`
+  - `artifacts/ui/regression/run-XXX/...`
 
----
+Die `run-XXX`-Ordner verhindern Überschreiben bei mehreren lokalen Läufen.
 
-## Data & Seeding
+## Konfiguration per Environment
 
-Before UI/API tests run, the DB is migrated + seeded:
+Typische Variablen (lokal & CI identisch):
 
-- `php artisan migrate:fresh --seed`
-- Verification step checks product count > 0 to ensure the UI has content.
+- `BASE_URL` (UI) – z. B. `http://localhost:4200`
+- `API_DOCS_URL` / `API_HOST` (API) – z. B. `http://localhost:8091`
+- `HEADLESS` – `true|false` für UI-Tests
+- `DEMO_EMAIL`, `DEMO_PASSWORD` – Login für UI-Tests
 
----
+## Einstieg
 
-## Artifacts
+Alles Wichtige ist über das Makefile gekapselt:
 
-- UI: Robot outputs (`log.html`, `report.html`, `output.xml`) and screenshots
-- API: `junit.xml` for CI reporting
+```bash
+make test-all
+```
 
-Standard output location: `artifacts/`
+Das macht: **up → seed → smoke → regression**.
