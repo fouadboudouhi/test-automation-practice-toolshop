@@ -31,9 +31,15 @@ Open Toolshop
     Wait Until Toolshop Ready
 
 Capture Failure Screenshot
-    ${test}=    Get Variable Value    ${TEST NAME}    unknown-test
-    ${safe}=    Replace String Using Regexp    ${test}    [^A-Za-z0-9._-]+    _
-    Take Screenshot    filename=${safe}.png
+    ${suite}=    Get Variable Value    ${SUITE NAME}    unknown-suite
+    ${test}=     Get Variable Value    ${TEST NAME}     unknown-test
+
+    ${suite}=    Replace String Using Regexp    ${suite}    [^A-Za-z0-9._-]+    _
+    ${test}=     Replace String Using Regexp    ${test}     [^A-Za-z0-9._-]+    _
+
+    ${ts}=       Get Current Date    result_format=%Y%m%d-%H%M%S
+
+    Take Screenshot    filename=FAIL__${suite}__${test}__${ts}.png
 
 Wait Until Toolshop Ready
     Wait For Elements State    css=body    visible    timeout=20s
