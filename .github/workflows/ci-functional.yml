@@ -1,26 +1,12 @@
 # CI (Functional)
 #
-# Purpose
-# -------
-# Run functional test suites (UI + API) against the Dockerized AUT (Application Under Test).
-# The workflow intentionally delegates orchestration to the Makefile to keep:
-#   local == CI
-#
-# Triggers
-# --------
-# - pull_request to main:        Smoke
-# - push to main:               Smoke + (if Smoke succeeds) Regression
-# - workflow_dispatch (manual):  Smoke
-#
-# DRY approach (no behavior change)
-# ---------------------------------
-# - Shared environment variables are defined once at workflow-level.
-# - Repeated steps are reused via YAML anchors/aliases (defined in the Smoke job).
-#
-# YAML tooling note
-# -----------------
-# Some YAML 1.1 parsers treat the key `on` as a boolean.
-# Quoting it improves compatibility with linters/parsers. GitHub Actions supports both.
+# Runs UI + API functional test suites against the Dockerized AUT.
+# Orchestration remains Makefile-first to keep local == CI.
+# Adds:
+# - log grouping for readability
+# - a structured GitHub Step Summary
+# - a hard guard that fails the job if Robot produced ERROR-level messages
+#   (prevents "green but with errors" situations)
 
 name: CI (Functional)
 
@@ -31,22 +17,18 @@ name: CI (Functional)
     branches: [main]
   workflow_dispatch:
 
-# Prevent concurrent runs for the same ref (branch/tag).
-# A newer run cancels the previous one.
 concurrency:
   group: ci-functional-${{ github.ref }}
   cancel-in-progress: true
 
-# Shared settings used by Makefile/tests.
 env:
-  WEB_PORT: "8091" # Backend / reverse proxy port (Compose)
-  UI_PORT: "4200"  # Angular dev server port
-  HEADLESS: "true" # UI tests headless mode
+  WEB_PORT: "8091"
+  UI_PORT: "4200"
+  HEADLESS: "true"
   DEMO_EMAIL: customer@practicesoftwaretesting.com
   DEMO_PASSWORD: welcome01
   COMPOSE_FILE: docker/docker-compose.yml
 
-# Default shell for all `run:` steps.
 defaults:
   run:
     shell: bash
@@ -57,14 +39,10 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # Unique compose project name to avoid collisions between runs.
       COMPOSE_PROJECT_NAME: toolshop-ci-${{ github.run_id }}-${{ github.run_attempt }}-smoke
-
-      # Artifact name exported as env so the upload step can be reused via alias.
       ARTIFACT_NAME: artifacts-functional-smoke-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
-      # --- Common steps (anchors defined here) ---
       - &step_checkout
         name: Checkout
         uses: actions/checkout@v4
@@ -80,25 +58,162 @@ jobs:
         name: Install Python deps + init Browser
         run: |
           set -euo pipefail
+          echo "::group::Install Python dependencies"
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           if [[ -f requirements-dev.txt ]]; then pip install -r requirements-dev.txt; fi
-          rfbrowser init
+          echo "::endgroup::"
 
-      # Smoke suite via Makefile:
-      # - up:   start AUT (docker compose)
-      # - seed: reset + seed DB
-      # - smoke: run smoke tests
+          echo "::group::Install Playwright browsers (rfbrowser init)"
+          rfbrowser init
+          echo "::endgroup::"
+
       - name: Run Smoke via Makefile
         run: |
           set -euo pipefail
-          make up
-          make seed
-          make smoke
 
-      # Always upload artifacts (even on failure) for debugging:
-      # - UI: Robot reports/logs/screenshots
-      # - API: JUnit XML, etc.
+          echo "::group::Docker compose up"
+          make up
+          echo "::endgroup::"
+
+          echo "::group::Seed database"
+          make seed
+          echo "::endgroup::"
+
+          echo "::group::Run smoke suites (API + UI)"
+          make smoke
+          echo "::endgroup::"
+
+      - &step_fail_on_robot_errors
+        name: Fail if Robot produced ERROR messages
+        if: always()
+        run: |
+          set -euo pipefail
+          echo "::group::Scan Robot output.xml for ERROR-level messages"
+          python - <<'PY'
+          from __future__ import annotations
+          from pathlib import Path
+
+          # Robot outputs are written under artifacts/ui/**/output.xml by the Makefile
+          outputs = sorted(Path("artifacts").glob("ui/**/output.xml"))
+          if not outputs:
+              print("No Robot output.xml found under artifacts/ui/. Nothing to scan.")
+              raise SystemExit(0)
+
+          error_hits = []
+          for p in outputs:
+              txt = p.read_text(encoding="utf-8", errors="replace")
+              # Robot writes error-level messages like: <msg level="ERROR">...</msg>
+              if 'level="ERROR"' in txt:
+                  error_hits.append(str(p))
+
+          if error_hits:
+              print("Robot ERROR-level messages detected in:")
+              for hit in error_hits:
+                  print(f" - {hit}")
+              print("\nFailing the job to avoid 'green but with errors'.")
+              raise SystemExit(1)
+
+          print("No Robot ERROR-level messages found.")
+          PY
+          echo "::endgroup::"
+
+      - &step_summary
+        name: Write CI summary (always)
+        if: always()
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          from __future__ import annotations
+          import os
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          summary_path = Path(os.environ["GITHUB_STEP_SUMMARY"])
+
+          def write(line: str = "") -> None:
+              summary_path.write_text(summary_path.read_text() + line + "\n" if summary_path.exists() else line + "\n")
+
+          def parse_junit(path: Path) -> dict:
+              # Supports single <testsuite> or <testsuites>
+              root = ET.parse(path).getroot()
+              suites = []
+              if root.tag == "testsuite":
+                  suites = [root]
+              elif root.tag == "testsuites":
+                  suites = list(root.findall("testsuite"))
+              else:
+                  suites = list(root.iter("testsuite"))
+
+              totals = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
+              for s in suites:
+                  for k in totals:
+                      v = s.attrib.get(k, "0")
+                      totals[k] += int(float(v)) if v else 0
+              return totals
+
+          def parse_robot(output_xml: Path) -> dict:
+              # Robot output.xml contains <statistics><total><stat pass=".." fail="..">All Tests</stat>
+              root = ET.parse(output_xml).getroot()
+              stat = None
+              for s in root.findall(".//statistics/total/stat"):
+                  if (s.text or "").strip().lower() in {"all tests", "all"}:
+                      stat = s
+                      break
+              if stat is None:
+                  # Fallback: first total stat
+                  stat = root.find(".//statistics/total/stat")
+
+              passed = int(stat.attrib.get("pass", "0")) if stat is not None else 0
+              failed = int(stat.attrib.get("fail", "0")) if stat is not None else 0
+
+              # Detect ERROR-level messages (parsing issues etc.)
+              txt = output_xml.read_text(encoding="utf-8", errors="replace")
+              has_error_msgs = 'level="ERROR"' in txt
+
+              return {"passed": passed, "failed": failed, "error_msgs": has_error_msgs}
+
+          write("## Functional CI Summary")
+          write("")
+          write(f"- Artifact name: **{os.environ.get('ARTIFACT_NAME', 'n/a')}**")
+          write("")
+
+          # API (pytest) JUnit results
+          junit_files = sorted(Path("artifacts").glob("api/**/junit.xml"))
+          if junit_files:
+              write("### API (pytest)")
+              for jf in junit_files:
+                  totals = parse_junit(jf)
+                  rel = jf.as_posix()
+                  write(f"- `{rel}` → tests={totals['tests']}, failures={totals['failures']}, errors={totals['errors']}, skipped={totals['skipped']}")
+              write("")
+          else:
+              write("### API (pytest)")
+              write("- No JUnit XML found under `artifacts/api/`.")
+              write("")
+
+          # UI (Robot) results
+          robot_outputs = sorted(Path("artifacts").glob("ui/**/output.xml"))
+          if robot_outputs:
+              write("### UI (Robot Framework)")
+              for ox in robot_outputs:
+                  r = parse_robot(ox)
+                  rel = ox.as_posix()
+                  err = "YES" if r["error_msgs"] else "no"
+                  write(f"- `{rel}` → passed={r['passed']}, failed={r['failed']}, robot_error_messages={err}")
+              write("")
+              write("Tip: download the artifact and open `log.html` / `report.html` for full UI details.")
+              write("")
+          else:
+              write("### UI (Robot Framework)")
+              write("- No Robot `output.xml` found under `artifacts/ui/`.")
+              write("")
+
+          write("### Docker / AUT logs")
+          write("- See the 'Docker logs (always)' step output for service logs.")
+          PY
+
       - &step_upload_artifacts
         name: Upload artifacts (always)
         if: always()
@@ -107,29 +222,29 @@ jobs:
           name: ${{ env.ARTIFACT_NAME }}
           path: artifacts
 
-      # Always try to print Docker logs; never fail the job due to log collection.
       - &step_docker_logs
         name: Docker logs (always)
         if: always()
         run: |
+          set -euo pipefail
+          echo "::group::Docker logs (tail)"
           make logs || true
+          echo "::endgroup::"
 
-      # Always clean up containers/volumes to keep the runner clean.
       - &step_cleanup
         name: Cleanup (always)
         if: always()
         run: |
+          set -euo pipefail
+          echo "::group::Docker compose clean"
           make clean || true
+          echo "::endgroup::"
 
   regression:
     name: Regression
     runs-on: ubuntu-latest
     needs: smoke
 
-    # Run only if:
-    # - Smoke succeeded
-    # - Event is push
-    # - Branch is main
     if: needs.smoke.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     env:
@@ -137,7 +252,6 @@ jobs:
       ARTIFACT_NAME: artifacts-functional-regression-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
-      # Reuse common steps from Smoke job via aliases.
       - *step_checkout
       - *step_setup_python
       - *step_install_deps_and_browser
@@ -145,10 +259,21 @@ jobs:
       - name: Run Regression via Makefile
         run: |
           set -euo pipefail
-          make up
-          make seed
-          make regression
 
+          echo "::group::Docker compose up"
+          make up
+          echo "::endgroup::"
+
+          echo "::group::Seed database"
+          make seed
+          echo "::endgroup::"
+
+          echo "::group::Run regression suites (API + UI)"
+          make regression
+          echo "::endgroup::"
+
+      - *step_fail_on_robot_errors
+      - *step_summary
       - *step_upload_artifacts
       - *step_docker_logs
       - *step_cleanup
