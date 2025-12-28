@@ -1,15 +1,55 @@
+# CI (Functional)
+#
+# Purpose
+# -------
+# Run functional test suites (UI + API) against the Dockerized AUT (Application Under Test).
+# The workflow intentionally delegates orchestration to the Makefile to keep:
+#   local == CI
+#
+# Triggers
+# --------
+# - pull_request to main:        Smoke
+# - push to main:               Smoke + (if Smoke succeeds) Regression
+# - workflow_dispatch (manual):  Smoke
+#
+# DRY approach (no behavior change)
+# ---------------------------------
+# - Shared environment variables are defined once at workflow-level.
+# - Repeated steps are reused via YAML anchors/aliases (defined in the Smoke job).
+#
+# YAML tooling note
+# -----------------
+# Some YAML 1.1 parsers treat the key `on` as a boolean.
+# Quoting it improves compatibility with linters/parsers. GitHub Actions supports both.
+
 name: CI (Functional)
 
-on:
+"on":
   pull_request:
-    branches: [ main ]
+    branches: [main]
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
+# Prevent concurrent runs for the same ref (branch/tag).
+# A newer run cancels the previous one.
 concurrency:
   group: ci-functional-${{ github.ref }}
   cancel-in-progress: true
+
+# Shared settings used by Makefile/tests.
+env:
+  WEB_PORT: "8091" # Backend / reverse proxy port (Compose)
+  UI_PORT: "4200"  # Angular dev server port
+  HEADLESS: "true" # UI tests headless mode
+  DEMO_EMAIL: customer@practicesoftwaretesting.com
+  DEMO_PASSWORD: welcome01
+  COMPOSE_FILE: docker/docker-compose.yml
+
+# Default shell for all `run:` steps.
+defaults:
+  run:
+    shell: bash
 
 jobs:
   smoke:
@@ -17,26 +57,27 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      WEB_PORT: "8091"
-      UI_PORT: "4200"
-      HEADLESS: "true"
-      DEMO_EMAIL: customer@practicesoftwaretesting.com
-      DEMO_PASSWORD: welcome01
-      COMPOSE_FILE: docker/docker-compose.yml
+      # Unique compose project name to avoid collisions between runs.
       COMPOSE_PROJECT_NAME: toolshop-ci-${{ github.run_id }}-${{ github.run_attempt }}-smoke
 
+      # Artifact name exported as env so the upload step can be reused via alias.
+      ARTIFACT_NAME: artifacts-functional-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+
     steps:
-      - name: Checkout
+      # --- Common steps (anchors defined here) ---
+      - &step_checkout
+        name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - &step_setup_python
+        name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install Python deps + init Browser
-        shell: bash
+      - &step_install_deps_and_browser
+        name: Install Python deps + init Browser
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
@@ -44,30 +85,39 @@ jobs:
           if [[ -f requirements-dev.txt ]]; then pip install -r requirements-dev.txt; fi
           rfbrowser init
 
+      # Smoke suite via Makefile:
+      # - up:   start AUT (docker compose)
+      # - seed: reset + seed DB
+      # - smoke: run smoke tests
       - name: Run Smoke via Makefile
-        shell: bash
         run: |
           set -euo pipefail
           make up
           make seed
           make smoke
 
-      - name: Upload artifacts (always)
+      # Always upload artifacts (even on failure) for debugging:
+      # - UI: Robot reports/logs/screenshots
+      # - API: JUnit XML, etc.
+      - &step_upload_artifacts
+        name: Upload artifacts (always)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: artifacts-functional-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: artifacts
 
-      - name: Docker logs (always)
+      # Always try to print Docker logs; never fail the job due to log collection.
+      - &step_docker_logs
+        name: Docker logs (always)
         if: always()
-        shell: bash
         run: |
           make logs || true
 
-      - name: Cleanup (always)
+      # Always clean up containers/volumes to keep the runner clean.
+      - &step_cleanup
+        name: Cleanup (always)
         if: always()
-        shell: bash
         run: |
           make clean || true
 
@@ -75,59 +125,30 @@ jobs:
     name: Regression
     runs-on: ubuntu-latest
     needs: smoke
+
+    # Run only if:
+    # - Smoke succeeded
+    # - Event is push
+    # - Branch is main
     if: needs.smoke.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     env:
-      WEB_PORT: "8091"
-      UI_PORT: "4200"
-      HEADLESS: "true"
-      DEMO_EMAIL: customer@practicesoftwaretesting.com
-      DEMO_PASSWORD: welcome01
-      COMPOSE_FILE: docker/docker-compose.yml
       COMPOSE_PROJECT_NAME: toolshop-ci-${{ github.run_id }}-${{ github.run_attempt }}-regression
+      ARTIFACT_NAME: artifacts-functional-regression-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Install Python deps + init Browser
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          if [[ -f requirements-dev.txt ]]; then pip install -r requirements-dev.txt; fi
-          rfbrowser init
+      # Reuse common steps from Smoke job via aliases.
+      - *step_checkout
+      - *step_setup_python
+      - *step_install_deps_and_browser
 
       - name: Run Regression via Makefile
-        shell: bash
         run: |
           set -euo pipefail
           make up
           make seed
           make regression
 
-      - name: Upload artifacts (always)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: artifacts-functional-regression-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts
-
-      - name: Docker logs (always)
-        if: always()
-        shell: bash
-        run: |
-          make logs || true
-
-      - name: Cleanup (always)
-        if: always()
-        shell: bash
-        run: |
-          make clean || true
+      - *step_upload_artifacts
+      - *step_docker_logs
+      - *step_cleanup

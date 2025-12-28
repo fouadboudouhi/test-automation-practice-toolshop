@@ -1,7 +1,7 @@
-# Dev / CI tooling (kept separate from runtime test deps)
-pre-commit
-ruff
-mypy
-types-requests
-pytest-cov
-pip-audit
+# Dev / CI tooling
+pre-commit==4.5.1
+ruff==0.14.10
+mypy==1.19.1
+types-requests==2.32.4.20250913
+pytest-cov==7.0.0
+pip-audit==2.10.0

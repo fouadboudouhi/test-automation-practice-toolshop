@@ -1,186 +1,278 @@
-# Toolshop – UI/API Test-Automation (Docker + Robot + Pytest)
+# Test Automation Practice — Toolshop (Sprint 5)
 
-Dieses Repo startet die **Practice Software Testing**-Demo via **Docker Compose** und führt darauf **UI-Tests (Robot Framework + Browser/Playwright)** sowie **API-Tests (pytest + requests)** aus – lokal und in CI.
+A production-like **test automation harness** around the “Toolshop” demo application (Practice Software Testing, Sprint 5),
+built to showcase **Dockerized environments**, **repeatable local workflows**, **CI pipelines**, **functional testing**
+(UI + API), and **load testing (k6)**.
 
-## System-Überblick (ASCII)
+This repository is intentionally structured like a real-world QA/DevEx project:
+- one command to bring the stack up,
+- deterministic seeding,
+- smoke vs regression test separation,
+- standardized artifacts and evidence.
 
-```text
-                 ┌────────────────────────────────────────────────┐
-                 │                 Developer / CI                 │
-                 │  make up / seed / smoke / regression / test-all│
-                 └───────────────────────────┬────────────────────┘
-                                             │
-                                             │  (Host network)
-                                             │
-                     ┌───────────────────────┴──────────────────────────┐
-                     │                Docker Compose Stack              │
-                     │                                                  │
-                     │  ┌──────────────┐        ┌───────────────────┐   │
-Robot UI Tests ─────▶│  │ angular-ui   │ 4200   │ web (nginx)       │   │◀───── Pytest API Tests
-(Playwright)         │  │ (Frontend)   │◀──────▶│ :8091 → API routes│   │       (requests)
-                     │  └──────────────┘        └─────────┬─────────┘   │
-                     │                                     │            │
-                     │                                     │ (internal) │
-                     │                            ┌────────▼────────┐   │
-                     │                            │ laravel-api     │   │
-                     │                            │ (Backend) :9000 │   │
-                     │                            └────────┬────────┘   │
-                     │                                     │            │
-                     │                            ┌────────▼────────┐   │
-                     │                            │ mariadb         │   │
-                     │                            │ DB :3306        │   │
-                     │                            └─────────────────┘   │
-                     └──────────────────────────────────────────────────┘
+---
+
+## What’s inside
+
+- **Docker Compose stack**: UI + API + DB + reverse proxy (API gateway).
+- **Makefile** as the single entry point for local workflows.
+- **UI tests** using Robot Framework + Browser (Playwright).
+- **API tests** using pytest + requests (OpenAPI-aware checks).
+- **Load tests** using k6 (smoke, ramp, peak, soak).
+- **Artifacts** saved under `artifacts/` for CI-friendly evidence.
+
+---
+
+## Quick start
+
+### Prerequisites
+- Docker + Docker Compose v2
+- GNU Make
+- Python **3.11**
+- `rfbrowser` prerequisites: Robot Framework Browser uses Playwright (installed via `rfbrowser init`)
+
+### 1) Create a virtualenv and install dependencies
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -r requirements.txt
+# Optional (lint/type tooling)
+pip install -r requirements-dev.txt
 ```
 
-> **Wichtig:** `web (nginx)` stellt i.d.R. die API inkl. Swagger unter `http://localhost:8091/api/documentation` bereit.
-> `angular-ui` läuft lokal typischerweise unter `http://localhost:4200`.
+### 2) Install Browser library dependencies (Playwright)
+```bash
+rfbrowser init
+```
 
----
-
-## Voraussetzungen
-
-- Docker + Docker Compose
-- GNU Make
-- Python (für lokale Tests, z. B. 3.11+ empfohlen)
-- Node brauchst du **nicht** manuell: `rfbrowser init` kümmert sich um Playwright/Browser-Binaries.
-
----
-
-## Docker Images (Reproducibility)
-
-Für reproduzierbare Runs sind die beiden Testsmith-Images (API/UI) in `docker/docker-compose.yml` per **Digest** gepinnt.
-Wenn du auf eine neuere Version upgraden willst, ersetze den Digest (z. B. aus Docker Hub „Layers“-Seite / `docker pull` + `docker inspect`).
-
----
-
-## Quickstart (lokal)
-
+### 3) Bring the stack up
 ```bash
 make up
+```
+
+Default endpoints:
+- UI: `http://localhost:4200`
+- API gateway / docs: `http://localhost:8091/api/documentation`
+
+### 4) Seed the database
+```bash
 make seed
+```
+
+### 5) Run tests
+Smoke:
+```bash
 make smoke
+```
+
+Regression:
+```bash
 make regression
 ```
 
-Alles in einem Lauf (Stack hochfahren → seed → smoke → regression):
-
+Full local pipeline:
 ```bash
 make test-all
 ```
 
 ---
 
-## Artefakte / Reports
+## Main commands
 
-Nach den Runs findest du u. a.:
-
-- Robot Framework:
-  - `artifacts/ui/smoke/{log.html,report.html,output.xml}`
-  - `artifacts/ui/regression/{log.html,report.html,output.xml}`
-  - Screenshots typischerweise unter `artifacts/.../screenshots/`
-- Pytest:
-  - `artifacts/api/smoke/junit.xml`
-  - `artifacts/api/regression/junit.xml`
-
-(Die genauen Pfade hängen an der Makefile-Konfiguration – Ziel ist: **alles unter `artifacts/`**.)
+- `make up` / `make down` / `make clean`
+- `make seed` (waits for API + DB, runs migrate/seed, verifies product count)
+- `make ui-smoke` / `make ui-regression`
+- `make api-smoke` / `make api-regression`
+- `make k6-smoke` / `make k6-ramp` / `make k6-peak` / `make k6-soak`
 
 ---
 
-## Häufige Make Targets
+## Configuration
+
+All important settings can be overridden via environment variables (examples):
 
 ```bash
-make help         # Übersicht
-make up           # Docker Stack starten
-make down         # Stack stoppen (Volumes behalten)
-make clean        # Stack stoppen + Volumes löschen
-make seed         # DB migrieren + seeden + verifizieren
-make smoke        # Smoke-Tests (Tags) ausführen
-make regression   # Regression-Tests (Tags) ausführen
-make test-all     # up -> seed -> smoke -> regression
-make logs         # Stack logs
-make ps           # docker compose ps
+# change ports and compose project isolation
+COMPOSE_PROJECT_NAME=toolshop-e2e-2 WEB_PORT=8092 UI_PORT=4201 make test-all
+
+# UI execution
+HEADLESS=false make ui-smoke
+
+# API coverage (optional)
+COV=true COV_FAIL_UNDER=60 make api-smoke
 ```
 
 ---
 
-## Konfiguration per ENV (typisch)
+## Artifacts and evidence
 
-Diese Werte kannst du (lokal/CI) überschreiben:
+This repo writes all evidence into deterministic folders:
 
-- `COMPOSE_FILE` (Default: `docker/docker-compose.yml`)
-- `BASE_URL` (Default: `http://localhost:4200`)
-- `API_HOST` (Default: `http://localhost:8091`)
-- `API_DOCS_URL` (Default: `http://localhost:8091/api/documentation`)
-- `API_DOC_URL` (deprecated alias)
-- `HEADLESS` (`true/false`)
-- `DEMO_EMAIL`, `DEMO_PASSWORD`
-- `ARTIFACTS` (z. B. `artifacts`)
-- Optional: Compose Project Name (gegen Port-Konflikte), z. B.
-  `COMPOSE_PROJECT_NAME=toolshop-e2e`
+- UI: `artifacts/ui/smoke/run-XXX/` and `artifacts/ui/regression/run-XXX/`
+- API: `artifacts/api/smoke/` and `artifacts/api/regression/`
+- k6: `artifacts/k6/<scenario>/run-XXX/`
 
-Beispiel:
-
+Open the most recent UI report locally:
 ```bash
-BASE_URL=http://localhost:4200 HEADLESS=false make smoke
+make ui-open-latest
 ```
 
 ---
 
-## Ordnerstruktur (Tests)
+## Documentation
 
-- `tests/ui/`
-  - `smoke/` – UI Smoke Suites
-  - `regression/` – UI Regression Suites
-  - `resources/` – gemeinsame Keywords/Variablen
-- `tests/api/`
-  - `smoke/`
-  - `regression/`
-
-## Quality / Security (CI)
-
-Zusätzlich zu den Test-Jobs gibt es:
-- `Quality Gates` Workflow (`.github/workflows/quality.yml`): ruff lint, ruff format check, mypy, pip-audit
-- `Dependency Review` Workflow (`.github/workflows/dependency-review.yml`): blockt riskante Dependency-Änderungen in PRs
-- `Dependabot` (`.github/dependabot.yml`): wöchentliche Updates für Python + GitHub Actions
-
-## Troubleshooting
-
-
-### “Bind for 0.0.0.0:3306 failed: port is already allocated”
-Auf deinem Host läuft bereits MySQL/MariaDB oder ein anderer Stack nutzt den Port.
-
-Optionen:
-1) Anderen Compose Project Name nutzen (parallel laufende Stacks trennen):
-```bash
-COMPOSE_PROJECT_NAME=toolshop-2 make up
-```
-
-2) Stack stoppen/aufräumen:
-```bash
-make down
-make clean
-docker ps
-```
-
-3) Ports im Compose via Env/Overrides anpassen (falls dein Compose das unterstützt).
-
-### UI/Swagger ist “reachable”, aber Tests finden keine Elemente
-Typisch: App ist da, aber Daten/Seed/Backend noch nicht bereit.
-Lösung: `make seed` sicherstellen und in Tests nur **gezielte Waits** verwenden (keine Sleeps).
+- `docs/ARCHITECTURE.md` — system overview and how components interact
+- `docs/TESTING.md` — how to run/debug tests locally and in CI-like conditions
+- `docs/TESTPLAN.md` — interview-grade test plan and test inventory
 
 ---
 
-## CI
+## Notes / known demo limitations
 
-Die GitHub Actions Workflow-Datei (`ci-ui-tests.yml`) führt aus:
+This project tests a **demo application**. Some endpoints/behaviors may not match the OpenAPI contract perfectly.
+When that happens, the tests try to:
+- prefer contract-derived values,
+- fail with actionable debug output,
+- and keep skips for endpoints that cannot be tested in the current gateway shape.
 
-- **Smoke** als Gate (muss grün sein)
-- **Regression** nur wenn Smoke erfolgreich war
-- Docker Stack wird im Job gestartet, DB wird migriert + geseedet, dann Robot Tests headless ausgeführt
-- Artefakte werden als GitHub Artifacts hochgeladen
+If you see a consistent 5xx on sorting (e.g. `GET /products?sort=...`), that indicates an **AUT issue or contract mismatch** rather than flaky automation.
 
-```
-✅ smoke  ->  ✅ regression
-❌ smoke  ->  regression wird übersprungen
+---
+
+## Repository structure
+
+```text
+.
+  .gitignore
+  Makefile
+  README.md
+  pyproject.toml
+  pytest.ini
+  requirements-dev.txt
+  requirements.txt
+artifacts/
+  k6/
+    smoke/
+      summary.json
+    peak/
+      run-001/
+        summary.json
+    ramp/
+      run-001/
+        summary.json
+docker/
+  README.md
+  docker-compose.yml
+  nginx/
+    default.conf
+.pytest_cache/
+  .gitignore
+  CACHEDIR.TAG
+  README.md
+  v/
+    cache/
+      lastfailed
+      nodeids
+.ruff_cache/
+  .gitignore
+  CACHEDIR.TAG
+  0.8.4/
+    10352653465989691370
+    13718451130533832589
+    14543009357150214380
+    15615112839415525973
+    6135972462602005084
+    7697044981311104874
+tests/
+  ui/
+    smoke/
+      categories_dropdown.robot
+      contact_route.robot
+      filters_panel_has_brands.robot
+      filters_panel_has_categories.robot
+      home.robot
+      login.robot
+      login_page_fields.robot
+      navigation.robot
+      privacy_route.robot
+      product.robot
+      product_details_add_to_cart_visible.robot
+      products_have_images.robot
+      products_have_prices.robot
+      products_route.robot
+      search.robot
+    resources/
+      keywords/
+        common.robot
+    regression/
+      filters/
+        clear_brand_filter.robot
+        filter_by_brand.robot
+        filter_by_category.robot
+      products/
+        back_to_products_after_details.robot
+        details_has_add_to_cart.robot
+        direct_products_access.robot
+        open_first_product_details.robot
+        open_two_products_titles_differ.robot
+        product_image_src_not_empty.robot
+      navigation/
+        categories_dropdown_entries.robot
+        contact_page_form_present.robot
+        privacy_page_heading.robot
+      search/
+        clear_search_restores_products.robot
+        no_results_empty_or_message.robot
+        search_results.robot
+      sorting/
+        sort_by_price.robot
+      cart/
+        add_to_cart.robot
+        cart_contains_added_product.robot
+        cart_persists_after_reload.robot
+      login/
+        negative_login.robot
+  api/
+    conftest.py
+    smoke/
+      test_api_smoke.py
+    regression/
+      test_api_regression.py
+docs/
+  ARCHITECTURE.md
+  CI.md
+  CONTRIBUTING.md
+  TESTING.md
+  TESTPLAN.md
+load/
+  k6/
+    peak.js
+    ramp.js
+    smoke.js
+    soak.js
+.venv/
+  .gitignore
+  CACHEDIR.TAG
+  pyvenv.cfg
+  bin/
+    activate
+    activate.csh
+    activate.fish
+    activate.nu
+    activate.ps1
+    activate_this.py
+    fastapi
+    normalizer
+    pip
+    pip3
+    pip3.13
+    playwright
+    py.test
+    pygmentize
+    pytest
+    python
+    python3
+    python3.13
+    ...
 ```

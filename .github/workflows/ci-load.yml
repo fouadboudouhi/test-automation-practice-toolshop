@@ -1,11 +1,38 @@
+# CI (Load / k6)
+#
+# Purpose
+# -------
+# Run k6 load tests against the Dockerized AUT.
+# Execution is Makefile-driven for consistency with local runs:
+#   make up -> make seed -> make k6-<scenario>
+#
+# Trigger -> Scenario mapping (matrix)
+# ------------------------------------
+# - push to main:                     ["smoke"]
+# - schedule nightly  (0 2 * * *):    ["ramp", "peak"]
+# - schedule weekly   (0 2 * * 1):    ["soak"]
+# - workflow_dispatch:
+#     scenario=all:                   ["smoke", "ramp", "peak", "soak"]
+#     scenario=<x>:                   ["<x>"]
+#
+# Notes
+# -----
+# - Each matrix run uses a unique COMPOSE_PROJECT_NAME to avoid collisions.
+# - Artifacts are uploaded on every run (success/failure) for inspection.
+#
+# YAML tooling note
+# -----------------
+# Some YAML 1.1 parsers treat the key `on` as a boolean.
+# Quoting it improves compatibility with linters/parsers. GitHub Actions supports both.
+
 name: CI (Load / k6)
 
-on:
+"on":
   push:
-    branches: [ main ]
+    branches: [main]
   schedule:
-    - cron: "0 2 * * *"   # nightly
-    - cron: "0 2 * * 1"   # weekly (Monday)
+    - cron: "0 2 * * *" # nightly
+    - cron: "0 2 * * 1" # weekly (Monday)
   workflow_dispatch:
     inputs:
       scenario:
@@ -19,9 +46,22 @@ on:
           - soak
           - all
 
+# Avoid overlapping runs for the same ref/event/schedule/input.
 concurrency:
   group: ci-load-${{ github.ref }}-${{ github.event_name }}-${{ github.event.schedule || inputs.scenario || 'push' }}
   cancel-in-progress: true
+
+env:
+  WEB_PORT: "8091"
+  UI_PORT: "4200"
+  HEADLESS: "true"
+  DEMO_EMAIL: customer@practicesoftwaretesting.com
+  DEMO_PASSWORD: welcome01
+  COMPOSE_FILE: docker/docker-compose.yml
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   k6:
@@ -29,8 +69,10 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      # Do not cancel other scenarios if one fails.
       fail-fast: false
       matrix:
+        # Trigger -> matrix selector
         scenario: >-
           ${{ fromJSON(
             (github.event_name == 'push' && '["smoke"]') ||
@@ -42,14 +84,7 @@ jobs:
           ) }}
 
     env:
-      WEB_PORT: "8091"
-      UI_PORT: "4200"
-      HEADLESS: "true"
-
-      DEMO_EMAIL: customer@practicesoftwaretesting.com
-      DEMO_PASSWORD: welcome01
-
-      COMPOSE_FILE: docker/docker-compose.yml
+      # Isolate Docker resources per scenario/run.
       COMPOSE_PROJECT_NAME: toolshop-ci-${{ github.run_id }}-${{ github.run_attempt }}-k6-${{ matrix.scenario }}
 
     steps:
@@ -60,14 +95,12 @@ jobs:
         uses: grafana/setup-k6-action@v1
 
       - name: Start stack + seed
-        shell: bash
         run: |
           set -euo pipefail
           make up
           make seed
 
-      - name: Run k6
-        shell: bash
+      - name: Run k6 scenario via Makefile
         run: |
           set -euo pipefail
           make "k6-${{ matrix.scenario }}"
@@ -81,12 +114,10 @@ jobs:
 
       - name: Docker logs (always)
         if: always()
-        shell: bash
         run: |
           make logs || true
 
       - name: Cleanup (always)
         if: always()
-        shell: bash
         run: |
           make clean || true

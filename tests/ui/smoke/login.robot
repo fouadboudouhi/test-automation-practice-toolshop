@@ -1,13 +1,16 @@
 *** Settings ***
 Documentation     Smoke test verifying that login is possible.
+...               Pass criteria: login completes and the browser is redirected away from /login.
 Resource          ../resources/keywords/common.robot
 Suite Setup       Open Toolshop
 Suite Teardown    Close Toolshop
+
 
 *** Test Cases ***
 Login Is Possible
     [Documentation]    Pass criteria: login completes (URL not containing /login anymore).
     [Tags]    smoke    login
+
     Wait For Elements State    css=[data-test="nav-sign-in"]    visible    timeout=20s
     Click    css=[data-test="nav-sign-in"]
 
@@ -18,5 +21,5 @@ Login Is Possible
     Fill Text    css=input#password    ${PASSWORD}
     Click        css=[data-test="login-submit"]
 
-    # Robust: verify redirect away from /login instead of waiting for some element to detach
+    # Robust: verify redirect away from /login instead of waiting for some element to detach.
     Wait For Login To Complete

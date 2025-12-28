@@ -1,15 +1,20 @@
 *** Settings ***
+Documentation     Smoke: verify category filter options are present on the products page.
+...               Uses a strict-mode safe wait by targeting the first matching category element via XPath.
 Resource          ../resources/keywords/common.robot
 Suite Setup       Open Toolshop
 Suite Teardown    Close Toolshop
 
+
 *** Test Cases ***
 Filters Show Category Options
+    [Documentation]    Open the products page and assert at least one category filter option is visible.
     [Tags]    smoke
+
     Go To    ${BASE_URL}
     Wait For At Least One Product Card
 
-    # Strict-mode safe: wait for ONE matching element
+    # Strict-mode safe: wait for ONE matching element.
     Wait Until Keyword Succeeds    60s    2s
     ...    Wait For Elements State    xpath=(//*[@data-test and starts-with(@data-test,"category-")])[1]    visible    timeout=2s
 

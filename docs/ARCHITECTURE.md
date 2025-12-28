@@ -1,70 +1,108 @@
-# Architektur (Test-Automation Toolshop)
+# Architecture
 
-Dieses Repository enthält **Automatisierungstests** (API + UI) für die Toolshop-Demo-Anwendung.
-Die Anwendung selbst läuft als Docker-Stack; die Tests laufen lokal (dein Rechner) oder in GitHub Actions (CI).
+This repository is a **test automation harness** around a dockerized Toolshop demo application.
+The core design goals are:
 
-## Komponenten
+- **Deterministic local workflow** via `make ...` (same steps as CI)
+- **Clear separation** of UI / API / load testing
+- **Evidence-first**: every run produces artifacts suitable for CI and debugging
+- **Minimal coupling** to implementation details; prefer public HTTP contracts and stable selectors
 
-### Docker-Stack (AUT)
-Der Stack wird über `docker/docker-compose.yml` gestartet und besteht typischerweise aus:
+---
 
-- **mariadb** – Datenbank
-- **laravel-api** – Backend/API (PHP/Laravel)
-- **web (nginx)** – Reverse Proxy (u. a. für die API-Doku)
-- **angular-ui** – Frontend/UI
+## High-level diagram (runtime + tooling)
 
-> Wichtige URLs (lokal, Standardports):
-- UI: `http://localhost:4200`
-- API Docs: `http://localhost:8091/api/documentation`
-
-### Test-Code
-
-#### API-Tests (pytest)
-- Pfad: `tests/api/`
-- Framework: **pytest**
-- Marker:
-  - `smoke` – schneller Kerncheck
-  - `regression` – breiterer Umfang
-
-#### UI-Tests (Robot Framework + Browser)
-- Pfad: `tests/ui/`
-- Framework: **Robot Framework**
-- Browser-Automation: **Robot Framework Browser** (Playwright)
-- Tags:
-  - `smoke`
-  - `regression`
-
-Gemeinsame UI-Keywords/Selektoren liegen unter:
-- `tests/ui/resources/keywords/common.robot`
-
-## Artefakte / Reports
-
-Testläufe schreiben nach `artifacts/`:
-
-- API:
-  - `artifacts/api/smoke/...`
-  - `artifacts/api/regression/...`
-- UI:
-  - `artifacts/ui/smoke/run-XXX/...`
-  - `artifacts/ui/regression/run-XXX/...`
-
-Die `run-XXX`-Ordner verhindern Überschreiben bei mehreren lokalen Läufen.
-
-## Konfiguration per Environment
-
-Typische Variablen (lokal & CI identisch):
-
-- `BASE_URL` (UI) – z. B. `http://localhost:4200`
-- `API_DOCS_URL` / `API_HOST` (API) – z. B. `http://localhost:8091`
-- `HEADLESS` – `true|false` für UI-Tests
-- `DEMO_EMAIL`, `DEMO_PASSWORD` – Login für UI-Tests
-
-## Einstieg
-
-Alles Wichtige ist über das Makefile gekapselt:
-
-```bash
-make test-all
+```text
+                         ┌───────────────────────────┐
+                         │   Developer / CI Runner   │
+                         │  (Make, Python, Robot, k6)│
+                         └──────────────┬────────────┘
+                                        │
+                                        │ make up / seed / tests
+                                        ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                         Docker Compose stack                          │
+│                                                                       │
+│   ┌──────────────┐     ┌──────────────┐     ┌──────────────────────┐  │
+│   │  angular-ui  │     │     web      │     │     laravel-api      │  │
+│   │  (UI :4200)  │     │ (nginx :80)  │     │ (PHP-FPM :9000)      │  │
+│   └──────┬───────┘     └──────┬───────┘     └────────────┬─────────┘  │
+│          │                    │                          │            │
+│          │ UI tests hit UI    │ API tests hit gateway    │ DB access  │
+│          │                    │                          │            │
+│          │                    ▼                          ▼            │
+│          │            http://localhost:8091        ┌──────────────┐   │
+│          │                                         │   mariadb    │   │
+│          │                                         │ (DB service) │   │
+│          │                                         └──────────────┘   │
+│          │                                                            │
+│   UI runner: Robot + Browser (Playwright)                             │
+│   API runner: pytest + requests (OpenAPI-aware probes)                │
+│   Load runner: k6 scenarios (smoke/ramp/peak/soak)                    │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
-Das macht: **up → seed → smoke → regression**.
+---
+
+## Components
+
+### Docker Compose services
+
+The Compose file defines these main services:
+
+- **`angular-ui`** — Toolshop frontend (Angular). Exposed on `${UI_PORT:-4200}`.
+- **`web`** — Nginx gateway. Exposed on `${WEB_PORT:-8091}`. Serves API/docs endpoints via the gateway.
+- **`laravel-api`** — Toolshop backend (Laravel / PHP-FPM), connected to the DB service.
+- **`mariadb`** — persistence layer; used by seeding and runtime.
+- **`laravel-app-code`** — a volume/service used to share app code into containers (depending on image layout).
+
+### Makefile: the “single interface”
+
+The Makefile intentionally acts as the **single source of truth** for workflows:
+- health waiting (`wait-ui`, `wait-api`, `wait-db`)
+- seeding and verification
+- test runs (UI/API)
+- standardized artifact directory layout
+- k6 scenario runners and parameterization
+
+This reduces CI drift: CI simply runs `make ...` targets.
+
+### Test taxonomy
+
+- **Smoke tests**: fast checks to prove the system is up (routing, critical UI elements, basic API reachability).
+- **Regression tests**: deeper functional scenarios (filters, cart behavior, sorting, OpenAPI contract checks).
+- **Load tests**: capacity and stability probes (smoke/ramp/peak/soak).
+
+---
+
+## Key data flows
+
+### Seeding
+1. `make seed` waits for API + DB
+2. Runs `php artisan migrate:fresh --seed` in `laravel-api`
+3. Verifies DB state via SQL (`SELECT COUNT(*) FROM products;`)
+
+### UI tests
+- Implemented in Robot Framework.
+- Browser Library runs Playwright.
+- “Strict mode” safe selectors are used where possible (`>> nth=0` or XPath first match).
+
+### API tests
+- Implemented in pytest.
+- Tests use the OpenAPI docs endpoint to discover and validate behaviors where supported (pagination/filter/sort).
+- When contract features are absent, tests skip instead of failing.
+
+### Load tests (k6)
+- Scenarios are plain JS (`load/k6/*.js`).
+- Output is exported as `summary.json` into `artifacts/k6/<scenario>/run-XXX/`.
+
+---
+
+## Directory conventions
+
+- `.github/workflows/` — CI (functional + load)
+- `docker/` — compose + nginx config
+- `tests/ui/` — Robot UI tests (+ resources/keywords)
+- `tests/api/` — pytest suites (smoke + regression)
+- `load/k6/` — k6 scenarios
+- `artifacts/` — all runtime evidence and CI outputs

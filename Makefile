@@ -1,9 +1,9 @@
 SHELL := /usr/bin/env bash
 .SHELLFLAGS := -eu -o pipefail -c
 
-# ----------------------------
+# -----------------------------------------------------------------------------
 # Config (override via env)
-# ----------------------------
+# -----------------------------------------------------------------------------
 COMPOSE_FILE ?= docker/docker-compose.yml
 COMPOSE_OVERRIDE ?=
 COMPOSE_PROJECT_NAME ?= toolshop-e2e
@@ -61,9 +61,9 @@ endif
 
 DC := docker compose -p $(COMPOSE_PROJECT_NAME) $(COMPOSE_FILES)
 
-# ----------------------------
+# -----------------------------------------------------------------------------
 # Helpers
-# ----------------------------
+# -----------------------------------------------------------------------------
 define require_cmd
 	@command -v $(1) >/dev/null 2>&1 || { echo "Missing command: $(1)"; exit 127; }
 endef
@@ -78,26 +78,46 @@ endef
 
 help:
 	@echo "Targets:"
+	@echo "  make help          - show this help"
+	@echo ""
+	@echo "Docker / Environment:"
 	@echo "  make up            - start docker stack"
 	@echo "  make down          - stop stack (keep volumes)"
 	@echo "  make clean         - stop stack and remove volumes"
+	@echo "  make ps            - show docker services"
+	@echo "  make logs          - tail docker logs"
 	@echo "  make seed          - wait -> migrate:fresh --seed -> verify"
-	@echo "  make smoke         - run API + UI smoke"
-	@echo "  make regression    - run API + UI regression"
-	@echo "  make test-all      - up -> seed -> smoke -> regression"
+	@echo ""
+	@echo "Functional tests (API + UI):"
+	@echo "  make api-smoke      - pytest API smoke"
+	@echo "  make api-regression - pytest API regression"
+	@echo "  make ui-smoke       - Robot UI smoke"
+	@echo "  make ui-regression  - Robot UI regression"
+	@echo "  make smoke          - run API + UI smoke"
+	@echo "  make regression     - run API + UI regression"
+	@echo "  make test-all       - up -> seed -> smoke -> regression"
 	@echo ""
 	@echo "Load tests (k6):"
 	@echo "  make k6-smoke      - short read-only smoke load"
 	@echo "  make k6-ramp       - ramp up/hold/down (capacity trend)"
 	@echo "  make k6-peak       - short spike/peak"
-	@echo "  make k6-soak       - long run (manual/weekly), default 30m"
+	@echo "  make k6-soak       - long run (weekly/manual), default 30m"
+	@echo ""
+	@echo "Artifacts:"
+	@echo "  UI:  $(UI_ARTIFACTS)/smoke|regression/run-XXX"
+	@echo "  API: $(API_ARTIFACTS)/smoke|regression"
+	@echo "  k6:  $(K6_ARTIFACTS)/smoke|ramp|peak|soak/run-XXX"
 	@echo ""
 	@echo "Useful overrides:"
 	@echo "  COMPOSE_PROJECT_NAME=toolshop-e2e-2 WEB_PORT=8092 UI_PORT=4201 make test-all"
 	@echo "  HEADLESS=false make ui-smoke"
 	@echo "  COV=true COV_FAIL_UNDER=60 make api-smoke"
-	@echo "  make k6-ramp K6_RAMP_TARGET=40 K6_RAMP_UP=3m K6_RAMP_HOLD=5m"
-	@echo "  make k6-soak K6_SOAK_VUS=10 K6_SOAK_DURATION=30m"
+	@echo ""
+	@echo "k6 overrides examples:"
+	@echo "  make k6-smoke K6_VUS=10 K6_DURATION=1m"
+	@echo "  make k6-ramp  K6_RAMP_TARGET=40 K6_RAMP_UP=3m K6_RAMP_HOLD=5m K6_RAMP_DOWN=2m"
+	@echo "  make k6-peak  K6_PEAK_VUS=75 K6_PEAK_RAMP_UP=30s K6_PEAK_HOLD=60s K6_PEAK_RAMP_DOWN=30s"
+	@echo "  make k6-soak  K6_SOAK_VUS=10 K6_SOAK_DURATION=30m"
 
 up:
 	$(DC) up -d --pull missing
@@ -162,9 +182,9 @@ verify-seed:
 		exit 1; \
 	fi
 
-# ----------------------------
+# -----------------------------------------------------------------------------
 # UI tests (Robot) - Run folders: run-001, run-002, ...
-# ----------------------------
+# -----------------------------------------------------------------------------
 rfbrowser-init:
 	@$(call require_cmd,rfbrowser)
 	rfbrowser init
@@ -201,9 +221,9 @@ ui-regression: wait-ui rfbrowser-init
 	BASE_URL="$(BASE_URL)" HEADLESS="$(HEADLESS)" \
 	robot --outputdir "$$OUT" --include "$(REG_TAG)" "$(UI_TEST_ROOT)"
 
-# ----------------------------
+# -----------------------------------------------------------------------------
 # API tests (pytest)
-# ----------------------------
+# -----------------------------------------------------------------------------
 api-smoke: wait-api
 	@$(call require_cmd,$(PYTHON))
 	@test -f "$(API_SMOKE_FILE)" || { echo "Missing: $(API_SMOKE_FILE)"; exit 2; }
@@ -269,9 +289,9 @@ ui-open-latest:
 		exit 2; \
 	fi
 
-# ----------------------------
+# -----------------------------------------------------------------------------
 # Load tests (k6)
-# ----------------------------
+# -----------------------------------------------------------------------------
 K6 ?= k6
 
 K6_SCRIPT_SMOKE ?= load/k6/smoke.js
@@ -363,7 +383,9 @@ k6-soak: wait-api
 	SOAK_VUS="$(K6_SOAK_VUS)" SOAK_DURATION="$(K6_SOAK_DURATION)" \
 	$(K6) run --summary-export="$$OUT/summary.json" "$(K6_SCRIPT_SOAK)"
 
+# -----------------------------------------------------------------------------
 # Combined pipeline targets (API + UI)
+# -----------------------------------------------------------------------------
 smoke: api-smoke ui-smoke
 regression: api-regression ui-regression
 
