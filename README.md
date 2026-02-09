@@ -154,13 +154,8 @@ If you see a consistent 5xx on sorting (e.g. `GET /products?sort=...`), that ind
 artifacts/
   k6/
     smoke/
-      summary.json
     peak/
-      run-001/
-        summary.json
     ramp/
-      run-001/
-        summary.json
 docker/
   README.md
   docker-compose.yml
@@ -170,20 +165,6 @@ docker/
   .gitignore
   CACHEDIR.TAG
   README.md
-  v/
-    cache/
-      lastfailed
-      nodeids
-.ruff_cache/
-  .gitignore
-  CACHEDIR.TAG
-  0.8.4/
-    10352653465989691370
-    13718451130533832589
-    14543009357150214380
-    15615112839415525973
-    6135972462602005084
-    7697044981311104874
 tests/
   ui/
     smoke/
@@ -251,28 +232,5 @@ load/
     ramp.js
     smoke.js
     soak.js
-.venv/
-  .gitignore
-  CACHEDIR.TAG
-  pyvenv.cfg
-  bin/
-    activate
-    activate.csh
-    activate.fish
-    activate.nu
-    activate.ps1
-    activate_this.py
-    fastapi
-    normalizer
-    pip
-    pip3
-    pip3.13
-    playwright
-    py.test
-    pygmentize
-    pytest
-    python
-    python3
-    python3.13
     ...
 ```
